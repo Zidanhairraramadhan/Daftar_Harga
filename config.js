@@ -22,7 +22,6 @@ const APP_CONFIG = {
 
     // ──────────────────────────────────────────
     // PIN ADMIN
-    // Default: "1234" (Bisa Anda ubah kapan saja)
     // ──────────────────────────────────────────
-    adminPin: "1234"
+    adminPin: "021105"
 };

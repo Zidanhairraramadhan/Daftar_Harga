@@ -1173,6 +1173,122 @@ body::before {
 }
 
 /* ============================================
+   PIN Login Modal
+   ============================================ */
+.pin-modal {
+    max-width: 420px;
+}
+
+.pin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pin-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.5;
+}
+
+.pin-input-group input {
+    width: 100%;
+    padding: 16px 20px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.3em;
+    outline: none;
+    transition: all var(--transition-base);
+}
+
+.pin-input-group input:focus {
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.pin-input-group input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+.pin-error {
+    text-align: center;
+    color: var(--rose-400);
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 8px;
+    background: rgba(251, 113, 133, 0.08);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(251, 113, 133, 0.15);
+}
+
+.btn-pin-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-primary);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.btn-pin-submit:hover {
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+/* Shake animation for wrong PIN */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+}
+
+.shake {
+    animation: shake 0.4s ease;
+}
+
+/* Logout Button */
+.btn-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(251, 113, 133, 0.1);
+    border: 1px solid rgba(251, 113, 133, 0.2);
+    border-radius: var(--radius-full);
+    color: var(--rose-400);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.btn-logout:hover {
+    background: rgba(251, 113, 133, 0.2);
+    border-color: rgba(251, 113, 133, 0.3);
+    transform: scale(1.05);
+}
+
+/* ============================================
    Responsive Design
    ============================================ */
 @media (max-width: 1024px) {
@@ -1279,3 +1395,4 @@ body::before {
         padding-right: 16px;
     }
 }
+

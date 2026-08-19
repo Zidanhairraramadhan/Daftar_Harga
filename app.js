@@ -1,5 +1,6 @@
 /* ============================================
    Daftar Harga Toko Sembako - App Logic
+   Supports: Firebase (online) + localStorage (offline fallback)
    ============================================ */
 
 // ── Default Products Data ──────────────────────
@@ -76,6 +77,9 @@ let products = [];
 let currentCategory = 'semua';
 let searchQuery = '';
 let nextId = 100;
+let isAdminLoggedIn = false;
+let db = null;
+let useFirebase = false;
 
 // ── DOM Elements ───────────────────────────────
 const productsGrid = document.getElementById('productsGrid');
@@ -93,6 +97,12 @@ const adminSearch = document.getElementById('adminSearch');
 const addProductForm = document.getElementById('addProductForm');
 const toastContainer = document.getElementById('toastContainer');
 const lastUpdated = document.getElementById('lastUpdated');
+const pinModal = document.getElementById('pinModal');
+const pinInput = document.getElementById('pinInput');
+const pinForm = document.getElementById('pinForm');
+const pinClose = document.getElementById('pinClose');
+const pinError = document.getElementById('pinError');
+const btnLogout = document.getElementById('btnLogout');
 
 // Stats
 const totalProductsEl = document.getElementById('totalProducts');
@@ -102,16 +112,97 @@ const emptyStockEl = document.getElementById('emptyStock');
 
 // ── Init ───────────────────────────────────────
 function init() {
-    loadProducts();
+    initFirebase();
     createParticles();
-    renderProducts();
-    updateStats();
-    updateLastUpdated();
     setupEventListeners();
 }
 
-// ── Data Management ────────────────────────────
-function loadProducts() {
+// ── Firebase Init ──────────────────────────────
+function initFirebase() {
+    const config = typeof APP_CONFIG !== 'undefined' ? APP_CONFIG : null;
+
+    if (config && config.firebase && config.firebase.apiKey && config.firebase.apiKey !== '') {
+        try {
+            firebase.initializeApp(config.firebase);
+            db = firebase.database();
+            useFirebase = true;
+            console.log('✅ Firebase connected! Data akan tersinkronisasi online.');
+            listenToFirebase();
+        } catch (err) {
+            console.warn('⚠️ Firebase gagal terhubung, menggunakan mode offline:', err.message);
+            useFirebase = false;
+            loadFromLocalStorage();
+        }
+    } else {
+        console.log('ℹ️ Firebase belum dikonfigurasi. Menggunakan mode offline (localStorage).');
+        useFirebase = false;
+        loadFromLocalStorage();
+    }
+}
+
+// ── Firebase Real-time Listener ────────────────
+function listenToFirebase() {
+    // Listen to products
+    db.ref('products').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Convert object to array
+            products = Object.values(data);
+            nextId = Math.max(...products.map(p => p.id), 99) + 1;
+        } else {
+            // First time: seed with defaults
+            seedFirebaseDefaults();
+            return; // Will be called again after seeding
+        }
+        renderProducts();
+        updateStats();
+    }, (error) => {
+        console.error('Firebase read error:', error);
+        showToast('Gagal membaca data dari server', 'error');
+        // Fallback to localStorage
+        useFirebase = false;
+        loadFromLocalStorage();
+    });
+
+    // Listen to lastUpdated
+    db.ref('lastUpdated').on('value', (snapshot) => {
+        const ts = snapshot.val();
+        if (ts) {
+            displayLastUpdated(new Date(ts));
+        }
+    });
+}
+
+function seedFirebaseDefaults() {
+    const productsObj = {};
+    DEFAULT_PRODUCTS.forEach(p => {
+        productsObj[p.id] = p;
+    });
+    db.ref('products').set(productsObj);
+    db.ref('lastUpdated').set(new Date().toISOString());
+    console.log('🌱 Database telah diisi dengan data default.');
+}
+
+// ── Firebase Write Operations ──────────────────
+function firebaseSaveProduct(product) {
+    if (!useFirebase) return;
+    db.ref('products/' + product.id).set(product);
+    db.ref('lastUpdated').set(new Date().toISOString());
+}
+
+function firebaseDeleteProduct(id) {
+    if (!useFirebase) return;
+    db.ref('products/' + id).remove();
+    db.ref('lastUpdated').set(new Date().toISOString());
+}
+
+function firebaseResetToDefaults() {
+    if (!useFirebase) return;
+    seedFirebaseDefaults();
+}
+
+// ── LocalStorage Fallback ──────────────────────
+function loadFromLocalStorage() {
     const saved = localStorage.getItem('sembako_products');
     if (saved) {
         products = JSON.parse(saved);
@@ -119,24 +210,31 @@ function loadProducts() {
     } else {
         products = [...DEFAULT_PRODUCTS];
         nextId = 100;
-        saveProducts();
+        saveToLocalStorage();
     }
+    renderProducts();
+    updateStats();
+    updateLastUpdatedFromLocal();
 }
 
-function saveProducts() {
+function saveToLocalStorage() {
     localStorage.setItem('sembako_products', JSON.stringify(products));
     localStorage.setItem('sembako_last_updated', new Date().toISOString());
-    updateLastUpdated();
+    updateLastUpdatedFromLocal();
 }
 
-function updateLastUpdated() {
+function updateLastUpdatedFromLocal() {
     const saved = localStorage.getItem('sembako_last_updated');
     if (saved) {
-        const date = new Date(saved);
-        const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-        lastUpdated.querySelector('span:last-child').textContent =
-            'Terakhir diupdate: ' + date.toLocaleDateString('id-ID', options);
+        displayLastUpdated(new Date(saved));
     }
+}
+
+// ── Display Last Updated ───────────────────────
+function displayLastUpdated(date) {
+    const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+    lastUpdated.querySelector('span:last-child').textContent =
+        'Terakhir diupdate: ' + date.toLocaleDateString('id-ID', options);
 }
 
 // ── Render Products ────────────────────────────
@@ -227,7 +325,7 @@ function updateStats() {
 }
 
 function animateNumber(element, target) {
-    const current = parseInt(element.textContent) || 0;
+    const current = parseInt(element.textContent.replace(/\./g, '')) || 0;
     const diff = target - current;
     if (diff === 0) return;
 
@@ -246,6 +344,65 @@ function animateNumber(element, target) {
             element.textContent = target.toLocaleString('id-ID');
         }
     }, stepTime);
+}
+
+// ── Admin PIN Login ────────────────────────────
+function openPinModal() {
+    pinModal.classList.add('active');
+    pinInput.value = '';
+    pinError.style.display = 'none';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => pinInput.focus(), 200);
+}
+
+function closePinModal() {
+    pinModal.classList.remove('active');
+    document.body.style.overflow = '';
+    pinInput.value = '';
+    pinError.style.display = 'none';
+}
+
+function verifyPin(e) {
+    e.preventDefault();
+    const enteredPin = pinInput.value.trim();
+    const config = typeof APP_CONFIG !== 'undefined' ? APP_CONFIG : null;
+    const correctPin = config ? config.adminPin : '1234';
+
+    if (enteredPin === correctPin) {
+        isAdminLoggedIn = true;
+        closePinModal();
+        openAdmin();
+        updateAdminButton();
+        showToast('Login admin berhasil!', 'success');
+    } else {
+        pinError.style.display = 'block';
+        pinInput.value = '';
+        pinInput.focus();
+        // Shake animation
+        pinInput.classList.add('shake');
+        setTimeout(() => pinInput.classList.remove('shake'), 500);
+    }
+}
+
+function logoutAdmin() {
+    isAdminLoggedIn = false;
+    closeAdmin();
+    updateAdminButton();
+    showToast('Anda telah logout dari admin', 'info');
+}
+
+function updateAdminButton() {
+    if (isAdminLoggedIn) {
+        btnAdmin.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>Admin</span>`;
+        btnLogout.style.display = 'flex';
+    } else {
+        btnLogout.style.display = 'none';
+    }
 }
 
 // ── Admin Panel ────────────────────────────────
@@ -317,9 +474,14 @@ function saveProductUpdate(id) {
     if (product) {
         product.price = newPrice;
         product.stock = newStock;
-        saveProducts();
-        renderProducts();
-        updateStats();
+
+        if (useFirebase) {
+            firebaseSaveProduct(product);
+        } else {
+            saveToLocalStorage();
+            renderProducts();
+            updateStats();
+        }
         showToast(`${product.name} berhasil diupdate!`, 'success');
     }
 }
@@ -330,10 +492,16 @@ function deleteProduct(id) {
 
     if (confirm(`Yakin ingin menghapus "${product.name}"?`)) {
         products = products.filter(p => p.id !== id);
-        saveProducts();
-        renderProducts();
+
+        if (useFirebase) {
+            firebaseDeleteProduct(id);
+        } else {
+            saveToLocalStorage();
+            renderProducts();
+            updateStats();
+        }
+
         renderAdminList(adminSearch.value);
-        updateStats();
         showToast(`${product.name} telah dihapus`, 'info');
     }
 }
@@ -371,14 +539,18 @@ function addProduct(e) {
     };
 
     products.push(newProduct);
-    saveProducts();
-    renderProducts();
-    updateStats();
-    addProductForm.reset();
-    showToast(`${name} berhasil ditambahkan!`, 'success');
 
-    // Switch to edit tab to show the result
+    if (useFirebase) {
+        firebaseSaveProduct(newProduct);
+    } else {
+        saveToLocalStorage();
+        renderProducts();
+        updateStats();
+    }
+
+    addProductForm.reset();
     renderAdminList();
+    showToast(`${name} berhasil ditambahkan!`, 'success');
 }
 
 // ── Toast Notification ─────────────────────────
@@ -452,16 +624,35 @@ function setupEventListeners() {
         renderProducts();
     });
 
+    // Admin button - check if logged in
+    btnAdmin.addEventListener('click', () => {
+        if (isAdminLoggedIn) {
+            openAdmin();
+        } else {
+            openPinModal();
+        }
+    });
+
+    // Logout button
+    btnLogout.addEventListener('click', logoutAdmin);
+
+    // PIN modal
+    pinForm.addEventListener('submit', verifyPin);
+    pinClose.addEventListener('click', closePinModal);
+    pinModal.addEventListener('click', (e) => {
+        if (e.target === pinModal) closePinModal();
+    });
+
     // Admin modal
-    btnAdmin.addEventListener('click', openAdmin);
     modalClose.addEventListener('click', closeAdmin);
     adminModal.addEventListener('click', (e) => {
         if (e.target === adminModal) closeAdmin();
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && adminModal.classList.contains('active')) {
-            closeAdmin();
+        if (e.key === 'Escape') {
+            if (pinModal.classList.contains('active')) closePinModal();
+            else if (adminModal.classList.contains('active')) closeAdmin();
         }
     });
 

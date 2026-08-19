@@ -43,11 +43,35 @@ const DEFAULT_PRODUCTS = [
     { id: 25, name: 'Aqua 600ml', price: 4000, stock: 120, unit: 'botol', category: 'minuman', emoji: '💧' },
     { id: 26, name: 'Teh Botol Sosro 450ml', price: 5000, stock: 60, unit: 'botol', category: 'minuman', emoji: '🧃' },
 
-    // Lainnya
+    // Lainnya (27-30)
     { id: 27, name: 'Sabun Mandi Lifebuoy 80g', price: 4500, stock: 50, unit: 'pcs', category: 'lainnya', emoji: '🧼' },
     { id: 28, name: 'Deterjen Rinso 800g', price: 18000, stock: 35, unit: 'pack', category: 'lainnya', emoji: '🫧' },
     { id: 29, name: 'Shampo Sunsilk 170ml', price: 22000, stock: 25, unit: 'botol', category: 'lainnya', emoji: '🧴' },
     { id: 30, name: 'Pasta Gigi Pepsodent 190g', price: 13000, stock: 40, unit: 'pcs', category: 'lainnya', emoji: '🪥' },
+
+    // Obat & P3K (31-34)
+    { id: 31, name: 'Bodrex 1 Strip (4 Kaplet)', price: 5000, stock: 50, unit: 'pcs', category: 'obat', emoji: '💊' },
+    { id: 32, name: 'Tolak Angin Cair 1 Sachet', price: 4500, stock: 60, unit: 'pcs', category: 'obat', emoji: '🌿' },
+    { id: 33, name: 'Paracetamol 500mg (10 Tab)', price: 6000, stock: 40, unit: 'pack', category: 'obat', emoji: '💊' },
+    { id: 34, name: 'Minyak Kayu Putih Cap Lang 60ml', price: 24000, stock: 25, unit: 'botol', category: 'obat', emoji: '🧴' },
+
+    // Rokok (35-38)
+    { id: 35, name: 'Sampoerna Mild 16', price: 35000, stock: 30, unit: 'bungkus', category: 'rokok', emoji: '🚬' },
+    { id: 36, name: 'Gudang Garam Surya 16', price: 34000, stock: 30, unit: 'bungkus', category: 'rokok', emoji: '🚬' },
+    { id: 37, name: 'Djarum Super 12', price: 25000, stock: 25, unit: 'bungkus', category: 'rokok', emoji: '🚬' },
+    { id: 38, name: 'Marlboro Filter Black', price: 42000, stock: 20, unit: 'bungkus', category: 'rokok', emoji: '🚬' },
+
+    // Jajanan & Snack (39-42)
+    { id: 39, name: 'Chitato Sapi Panggang 68g', price: 11500, stock: 30, unit: 'bungkus', category: 'jajanan', emoji: '🥔' },
+    { id: 40, name: 'Taro Net Seaweed 65g', price: 9500, stock: 35, unit: 'bungkus', category: 'jajanan', emoji: '🍿' },
+    { id: 41, name: 'Beng-Beng 1 Pack (12pcs)', price: 24000, stock: 20, unit: 'pack', category: 'jajanan', emoji: '🍫' },
+    { id: 42, name: 'Biskuit Roma Kelapa 300g', price: 10500, stock: 40, unit: 'bungkus', category: 'jajanan', emoji: '🍪' },
+
+    // Es Krim (43-46)
+    { id: 43, name: 'Walls Cornetto Disc Coklat', price: 12000, stock: 20, unit: 'pcs', category: 'eskrim', emoji: '🍦' },
+    { id: 44, name: 'Walls Feast Coklat', price: 7000, stock: 25, unit: 'pcs', category: 'eskrim', emoji: '🍦' },
+    { id: 45, name: 'Walls Magnum Classic', price: 18000, stock: 15, unit: 'pcs', category: 'eskrim', emoji: '🍨' },
+    { id: 46, name: 'Walls Paddle Pop Rainbow', price: 5000, stock: 30, unit: 'pcs', category: 'eskrim', emoji: '🍧' },
 ];
 
 // ── Category Labels ────────────────────────────
@@ -59,6 +83,10 @@ const CATEGORY_LABELS = {
     telur: 'Telur & Susu',
     mie: 'Mie & Tepung',
     minuman: 'Minuman',
+    obat: 'Obat & P3K',
+    rokok: 'Rokok',
+    jajanan: 'Jajanan & Snack',
+    eskrim: 'Es Krim',
     lainnya: 'Lainnya',
 };
 
@@ -69,6 +97,10 @@ const CATEGORY_EMOJIS = {
     telur: '🥚',
     mie: '🍜',
     minuman: '☕',
+    obat: '💊',
+    rokok: '🚬',
+    jajanan: '🍿',
+    eskrim: '🍦',
     lainnya: '📦',
 };
 
@@ -146,6 +178,19 @@ function listenToFirebase() {
     db.ref('products').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
+            // Check if any default products are missing in database keys
+            let hasMissing = false;
+            DEFAULT_PRODUCTS.forEach(dp => {
+                if (!data[dp.id]) {
+                    db.ref('products/' + dp.id).set(dp);
+                    hasMissing = true;
+                }
+            });
+            
+            if (hasMissing) {
+                return; // listener will trigger again with newly synced items
+            }
+
             // Convert object to array
             products = Object.values(data);
             nextId = Math.max(...products.map(p => p.id), 99) + 1;
@@ -206,6 +251,12 @@ function loadFromLocalStorage() {
     const saved = localStorage.getItem('sembako_products');
     if (saved) {
         products = JSON.parse(saved);
+        // Merge any new default items
+        DEFAULT_PRODUCTS.forEach(dp => {
+            if (!products.some(p => p.id === dp.id || p.name.toLowerCase() === dp.name.toLowerCase())) {
+                products.push(dp);
+            }
+        });
         nextId = Math.max(...products.map(p => p.id), 99) + 1;
     } else {
         products = [...DEFAULT_PRODUCTS];

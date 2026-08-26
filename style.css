@@ -1092,6 +1092,329 @@ body::before {
 }
 
 /* ============================================
+   Buy Button on Product Card
+   ============================================ */
+.btn-buy-product {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    margin-top: 16px;
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(6, 182, 212, 0.12));
+    border: 1px solid rgba(52, 211, 153, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--emerald-400);
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-buy-product::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.08), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-buy-product:hover::before {
+    left: 100%;
+}
+
+.btn-buy-product:hover {
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(6, 182, 212, 0.2));
+    border-color: rgba(52, 211, 153, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(52, 211, 153, 0.2);
+}
+
+.btn-buy-product:active {
+    transform: translateY(0);
+}
+
+.btn-buy-product.btn-buy-disabled {
+    background: rgba(148, 163, 184, 0.06);
+    border-color: rgba(148, 163, 184, 0.1);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-buy-product.btn-buy-disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: rgba(148, 163, 184, 0.06);
+    border-color: rgba(148, 163, 184, 0.1);
+}
+
+.btn-buy-product.btn-buy-disabled::before {
+    display: none;
+}
+
+/* ============================================
+   Purchase Modal
+   ============================================ */
+.purchase-modal {
+    max-width: 480px;
+}
+
+.purchase-product-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.06));
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.purchase-emoji {
+    width: 56px;
+    height: 56px;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.purchase-details h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.purchase-category {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.purchase-price-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.purchase-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.purchase-info-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.purchase-info-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.purchase-stock-value {
+    color: var(--emerald-400);
+}
+
+/* Quantity Section */
+.purchase-quantity-section {
+    margin-bottom: 20px;
+}
+
+.purchase-qty-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.purchase-qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.qty-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: rgba(148, 163, 184, 0.06);
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.qty-btn:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary-400);
+}
+
+.qty-btn:active {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.qty-minus {
+    border-right: 1px solid var(--border-color);
+}
+
+.qty-plus {
+    border-left: 1px solid var(--border-color);
+}
+
+.qty-input {
+    flex: 1;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.02em;
+    -moz-appearance: textfield;
+}
+
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Total Section */
+.purchase-total-section {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(6, 182, 212, 0.08));
+    border: 1px solid rgba(52, 211, 153, 0.15);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.purchase-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.purchase-total-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.purchase-total-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--emerald-400), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    transition: all var(--transition-fast);
+}
+
+/* Confirm Button */
+.btn-confirm-purchase {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--emerald-600), var(--emerald-500));
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-confirm-purchase::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.btn-confirm-purchase:hover::after {
+    opacity: 1;
+}
+
+.btn-confirm-purchase:hover {
+    background: linear-gradient(135deg, var(--emerald-500), var(--emerald-400));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.btn-confirm-purchase:active {
+    transform: translateY(0);
+}
+
+.btn-confirm-purchase.btn-purchase-disabled {
+    background: var(--slate-700);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-confirm-purchase.btn-purchase-disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.purchase-note {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 14px;
+    font-style: italic;
+}
+
+/* ============================================
    Toast
    ============================================ */
 .toast-container {

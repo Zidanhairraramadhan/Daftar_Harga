@@ -270,6 +270,73 @@
         </div>
     </div>
 
+    <!-- Purchase Modal -->
+    <div class="modal-overlay" id="purchaseModal">
+        <div class="modal purchase-modal">
+            <div class="modal-header">
+                <h2>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    Beli Produk
+                </h2>
+                <button class="modal-close" id="purchaseClose">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="purchase-product-info" id="purchaseProductInfo">
+                    <div class="purchase-emoji" id="purchaseEmoji">📦</div>
+                    <div class="purchase-details">
+                        <h3 id="purchaseProductName">Nama Produk</h3>
+                        <p class="purchase-category" id="purchaseProductCategory">Kategori</p>
+                    </div>
+                </div>
+
+                <div class="purchase-price-info">
+                    <div class="purchase-info-row">
+                        <span class="purchase-info-label">Harga Satuan</span>
+                        <span class="purchase-info-value" id="purchaseUnitPrice">Rp 0</span>
+                    </div>
+                    <div class="purchase-info-row">
+                        <span class="purchase-info-label">Stok Tersedia</span>
+                        <span class="purchase-info-value purchase-stock-value" id="purchaseAvailableStock">0</span>
+                    </div>
+                </div>
+
+                <div class="purchase-quantity-section">
+                    <label class="purchase-qty-label">Jumlah Beli</label>
+                    <div class="purchase-qty-controls">
+                        <button class="qty-btn qty-minus" id="qtyMinus" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <input type="number" id="purchaseQty" class="qty-input" value="1" min="1" max="999">
+                        <button class="qty-btn qty-plus" id="qtyPlus" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="purchase-total-section">
+                    <div class="purchase-total-row">
+                        <span class="purchase-total-label">Total Harga</span>
+                        <span class="purchase-total-value" id="purchaseTotalPrice">Rp 0</span>
+                    </div>
+                </div>
+
+                <button class="btn-confirm-purchase" id="btnConfirmPurchase" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Konfirmasi Pembelian
+                </button>
+
+                <p class="purchase-note">Stok akan otomatis berkurang setelah konfirmasi pembelian</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast-container" id="toastContainer"></div>
 

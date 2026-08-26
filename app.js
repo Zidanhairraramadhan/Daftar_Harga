@@ -112,6 +112,7 @@ let nextId = 100;
 let isAdminLoggedIn = false;
 let db = null;
 let useFirebase = false;
+let currentPurchaseProduct = null;
 
 // ── DOM Elements ───────────────────────────────
 const productsGrid = document.getElementById('productsGrid');
@@ -135,6 +136,20 @@ const pinForm = document.getElementById('pinForm');
 const pinClose = document.getElementById('pinClose');
 const pinError = document.getElementById('pinError');
 const btnLogout = document.getElementById('btnLogout');
+
+// Purchase Modal
+const purchaseModal = document.getElementById('purchaseModal');
+const purchaseClose = document.getElementById('purchaseClose');
+const purchaseEmoji = document.getElementById('purchaseEmoji');
+const purchaseProductName = document.getElementById('purchaseProductName');
+const purchaseProductCategory = document.getElementById('purchaseProductCategory');
+const purchaseUnitPrice = document.getElementById('purchaseUnitPrice');
+const purchaseAvailableStock = document.getElementById('purchaseAvailableStock');
+const purchaseQty = document.getElementById('purchaseQty');
+const purchaseTotalPrice = document.getElementById('purchaseTotalPrice');
+const qtyMinus = document.getElementById('qtyMinus');
+const qtyPlus = document.getElementById('qtyPlus');
+const btnConfirmPurchase = document.getElementById('btnConfirmPurchase');
 
 // Stats
 const totalProductsEl = document.getElementById('totalProducts');
@@ -323,6 +338,7 @@ function renderProducts() {
     // Build cards
     productsGrid.innerHTML = filtered.map((product, index) => {
         const stockStatus = getStockStatus(product.stock);
+        const isSoldOut = product.stock === 0;
         return `
             <div class="product-card" style="animation-delay: ${index * 0.04}s">
                 <div class="product-card-top">
@@ -341,6 +357,13 @@ function renderProducts() {
                         <span class="stock-value">${product.stock} <span class="stock-unit">${product.unit}</span></span>
                     </div>
                 </div>
+                <button class="btn-buy-product ${isSoldOut ? 'btn-buy-disabled' : ''}" data-id="${product.id}" ${isSoldOut ? 'disabled' : ''}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    ${isSoldOut ? 'Stok Habis' : 'Beli Sekarang'}
+                </button>
             </div>
         `;
     }).join('');
@@ -604,6 +627,81 @@ function addProduct(e) {
     showToast(`${name} berhasil ditambahkan!`, 'success');
 }
 
+// ── Purchase Modal ─────────────────────────────
+function openPurchaseModal(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product || product.stock === 0) return;
+
+    currentPurchaseProduct = product;
+
+    purchaseEmoji.textContent = product.emoji || CATEGORY_EMOJIS[product.category] || '📦';
+    purchaseProductName.textContent = product.name;
+    purchaseProductCategory.textContent = CATEGORY_LABELS[product.category] || product.category;
+    purchaseUnitPrice.textContent = formatRupiah(product.price);
+    purchaseAvailableStock.textContent = `${product.stock} ${product.unit}`;
+    purchaseQty.value = 1;
+    purchaseQty.max = product.stock;
+    updatePurchaseTotal();
+
+    purchaseModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePurchaseModal() {
+    purchaseModal.classList.remove('active');
+    document.body.style.overflow = '';
+    currentPurchaseProduct = null;
+}
+
+function updatePurchaseTotal() {
+    if (!currentPurchaseProduct) return;
+
+    let qty = parseInt(purchaseQty.value) || 0;
+    if (qty < 1) qty = 1;
+    if (qty > currentPurchaseProduct.stock) qty = currentPurchaseProduct.stock;
+    purchaseQty.value = qty;
+
+    const total = currentPurchaseProduct.price * qty;
+    purchaseTotalPrice.textContent = formatRupiah(total);
+
+    // Update button state
+    const btn = document.getElementById('btnConfirmPurchase');
+    if (qty > currentPurchaseProduct.stock || qty < 1) {
+        btn.disabled = true;
+        btn.classList.add('btn-purchase-disabled');
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('btn-purchase-disabled');
+    }
+}
+
+function confirmPurchase() {
+    if (!currentPurchaseProduct) return;
+
+    const qty = parseInt(purchaseQty.value) || 0;
+    if (qty < 1 || qty > currentPurchaseProduct.stock) {
+        showToast('Jumlah pembelian tidak valid!', 'error');
+        return;
+    }
+
+    const product = products.find(p => p.id === currentPurchaseProduct.id);
+    if (!product) return;
+
+    const totalPrice = product.price * qty;
+    product.stock -= qty;
+
+    if (useFirebase) {
+        firebaseSaveProduct(product);
+    } else {
+        saveToLocalStorage();
+        renderProducts();
+        updateStats();
+    }
+
+    closePurchaseModal();
+    showToast(`Berhasil membeli ${qty} ${product.unit} ${product.name} — Total: ${formatRupiah(totalPrice)}`, 'success');
+}
+
 // ── Toast Notification ─────────────────────────
 function showToast(message, type = 'info') {
     const icons = {
@@ -702,7 +800,8 @@ function setupEventListeners() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (pinModal.classList.contains('active')) closePinModal();
+            if (purchaseModal.classList.contains('active')) closePurchaseModal();
+            else if (pinModal.classList.contains('active')) closePinModal();
             else if (adminModal.classList.contains('active')) closeAdmin();
         }
     });
@@ -737,6 +836,38 @@ function setupEventListeners() {
 
     // Add product form
     addProductForm.addEventListener('submit', addProduct);
+
+    // Purchase modal events
+    productsGrid.addEventListener('click', (e) => {
+        const buyBtn = e.target.closest('.btn-buy-product');
+        if (buyBtn && !buyBtn.disabled) {
+            openPurchaseModal(parseInt(buyBtn.dataset.id));
+        }
+    });
+
+    purchaseClose.addEventListener('click', closePurchaseModal);
+    purchaseModal.addEventListener('click', (e) => {
+        if (e.target === purchaseModal) closePurchaseModal();
+    });
+
+    qtyMinus.addEventListener('click', () => {
+        let val = parseInt(purchaseQty.value) || 1;
+        if (val > 1) purchaseQty.value = val - 1;
+        updatePurchaseTotal();
+    });
+
+    qtyPlus.addEventListener('click', () => {
+        let val = parseInt(purchaseQty.value) || 1;
+        if (currentPurchaseProduct && val < currentPurchaseProduct.stock) {
+            purchaseQty.value = val + 1;
+        }
+        updatePurchaseTotal();
+    });
+
+    purchaseQty.addEventListener('input', updatePurchaseTotal);
+    purchaseQty.addEventListener('change', updatePurchaseTotal);
+
+    btnConfirmPurchase.addEventListener('click', confirmPurchase);
 }
 
 function capitalize(str) {

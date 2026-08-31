@@ -115,8 +115,12 @@ let useFirebase = false;
 let cart = []; // { productId, qty }
 let transactions = []; // riwayat transaksi penjualan
 let expenses = []; // riwayat pengeluaran
+let kasbonList = []; // riwayat kasbon pelanggan
 let nextTransactionId = 1;
 let nextExpenseId = 1;
+let nextKasbonId = 1;
+let currentPaymentMode = 'cash'; // 'cash' | 'kasbon'
+let currentSelectedKasbonId = null;
 
 // ── DOM Elements ───────────────────────────────
 const productsGrid = document.getElementById('productsGrid');
@@ -172,6 +176,15 @@ const quickAddCancel = document.getElementById('quickAddCancel');
 const quickAddConfirm = document.getElementById('quickAddConfirm');
 let quickAddProductId = null;
 
+// Payment Method Switcher & Kasbon in Cart
+const pmBtnCash = document.getElementById('pmBtnCash');
+const pmBtnKasbon = document.getElementById('pmBtnKasbon');
+const cashCalculatorSection = document.getElementById('cashCalculatorSection');
+const cartKasbonSection = document.getElementById('cartKasbonSection');
+const cartCustomerName = document.getElementById('cartCustomerName');
+const cartCustomerPhone = document.getElementById('cartCustomerPhone');
+const cartKasbonDP = document.getElementById('cartKasbonDP');
+
 // Cash Calculator
 const cartCashPaid = document.getElementById('cartCashPaid');
 const calcChips = document.getElementById('calcChips');
@@ -180,6 +193,14 @@ const calcResultRow = document.getElementById('calcResultRow');
 const calcResultLabel = document.getElementById('calcResultLabel');
 const calcChangeValue = document.getElementById('calcChangeValue');
 let currentGrandTotal = 0;
+
+// Pay Kasbon Modal
+const payKasbonModal = document.getElementById('payKasbonModal');
+const payKasbonClose = document.getElementById('payKasbonClose');
+const payKasbonForm = document.getElementById('payKasbonForm');
+const payKasbonAmount = document.getElementById('payKasbonAmount');
+const chipPayFull = document.getElementById('chipPayFull');
+const payKasbonNote = document.getElementById('payKasbonNote');
 
 // Stats
 const totalProductsEl = document.getElementById('totalProducts');
@@ -194,6 +215,7 @@ function init() {
     setupEventListeners();
     loadTransactionsLocal();
     loadExpensesLocal();
+    loadKasbonLocal();
     checkLowStock();
 }
 
@@ -293,6 +315,21 @@ function listenToFirebase() {
         if (adminModal.classList.contains('active')) {
             renderExpenseList();
             renderFinancialSummary();
+        }
+    });
+
+    // Listen to kasbon
+    db.ref('kasbon').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            kasbonList = Object.values(data).sort((a, b) => new Date(b.date) - new Date(a.date));
+            nextKasbonId = Math.max(...kasbonList.map(k => k.id), 0) + 1;
+        } else {
+            kasbonList = [];
+        }
+        if (adminModal.classList.contains('active')) {
+            renderKasbonList();
+            renderKasbonSummary();
         }
     });
 }
@@ -598,6 +635,7 @@ function openAdmin() {
         const tabName = activeTab.dataset.tab;
         if (tabName === 'riwayat') renderTransactionHistory();
         else if (tabName === 'keuangan') { renderFinancialSummary(); renderExpenseList(); }
+        else if (tabName === 'kasbon') { renderKasbonSummary(); renderKasbonList(); }
         else if (tabName === 'stokRendah') renderLowStockList();
     }
 }
@@ -1009,6 +1047,21 @@ function setCashAmount(amount) {
     updateChangeCalculator();
 }
 
+function switchPaymentMode(mode) {
+    currentPaymentMode = mode;
+    if (mode === 'kasbon') {
+        if (pmBtnCash) pmBtnCash.classList.remove('active');
+        if (pmBtnKasbon) pmBtnKasbon.classList.add('active');
+        if (cashCalculatorSection) cashCalculatorSection.style.display = 'none';
+        if (cartKasbonSection) cartKasbonSection.style.display = 'block';
+    } else {
+        if (pmBtnKasbon) pmBtnKasbon.classList.remove('active');
+        if (pmBtnCash) pmBtnCash.classList.add('active');
+        if (cartKasbonSection) cartKasbonSection.style.display = 'none';
+        if (cashCalculatorSection) cashCalculatorSection.style.display = 'block';
+    }
+}
+
 function processCart() {
     if (cart.length === 0) {
         showToast('Keranjang masih kosong!', 'error');
@@ -1024,6 +1077,25 @@ function processCart() {
         }
         if (item.qty > product.stock) {
             showToast(`Stok ${product.name} tidak mencukupi (sisa: ${product.stock})`, 'error');
+            return;
+        }
+    }
+
+    // Validate Kasbon payment mode details
+    let customerName = '';
+    let customerPhone = '';
+    let dpVal = 0;
+    if (currentPaymentMode === 'kasbon') {
+        customerName = cartCustomerName ? cartCustomerName.value.trim() : '';
+        if (!customerName) {
+            showToast('Nama pelanggan wajib diisi untuk transaksi Kasbon!', 'error');
+            if (cartCustomerName) cartCustomerName.focus();
+            return;
+        }
+        customerPhone = cartCustomerPhone ? cartCustomerPhone.value.trim() : '';
+        dpVal = parseInt(cartKasbonDP?.value) || 0;
+        if (dpVal < 0) {
+            showToast('Nominal DP tidak valid!', 'error');
             return;
         }
     }
@@ -1060,7 +1132,57 @@ function processCart() {
     renderProducts();
     updateStats();
 
-    // Check change
+    if (currentPaymentMode === 'kasbon') {
+        if (dpVal > grandTotal) {
+            showToast(`DP (${formatRupiah(dpVal)}) tidak boleh lebih dari total belanja (${formatRupiah(grandTotal)})!`, 'error');
+            return;
+        }
+        const remainingAmount = grandTotal - dpVal;
+        const status = remainingAmount === 0 ? 'lunas' : (dpVal > 0 ? 'dicicil' : 'belum_lunas');
+
+        const kasbonItem = {
+            id: nextKasbonId++,
+            customerName: customerName,
+            phone: customerPhone,
+            date: new Date().toISOString(),
+            totalAmount: grandTotal,
+            paidAmount: dpVal,
+            remainingAmount: remainingAmount,
+            status: status,
+            itemsDescription: transactionItems.map(i => `${i.qty} ${i.unit} ${i.name}`).join(', '),
+            items: transactionItems,
+            payments: dpVal > 0 ? [{ id: 1, date: new Date().toISOString(), amount: dpVal, note: 'Uang Muka / DP Kasir' }] : []
+        };
+        saveKasbonItem(kasbonItem);
+
+        const transaction = {
+            id: nextTransactionId++,
+            date: new Date().toISOString(),
+            items: transactionItems,
+            totalItems: totalItems,
+            grandTotal: grandTotal,
+            cashPaid: dpVal,
+            change: 0,
+            paymentMode: 'kasbon',
+            customerName: customerName,
+            kasbonId: kasbonItem.id
+        };
+        saveTransaction(transaction);
+
+        const itemCount = cart.length;
+        cart = [];
+        if (cartCustomerName) cartCustomerName.value = '';
+        if (cartCustomerPhone) cartCustomerPhone.value = '';
+        if (cartKasbonDP) cartKasbonDP.value = '0';
+        switchPaymentMode('cash'); // Reset back to cash
+        updateCartBadge();
+        renderProducts();
+        closeCartModal();
+        showToast(`✓ Kasbon dicatat a.n ${customerName}! Total: ${formatRupiah(grandTotal)} (Sisa Hutang: ${formatRupiah(remainingAmount)})`, 'success');
+        return;
+    }
+
+    // Cash mode
     let changeMsg = '';
     const cashVal = parseInt(cartCashPaid?.value) || 0;
     let changeAmount = 0;
@@ -1077,7 +1199,8 @@ function processCart() {
         totalItems: totalItems,
         grandTotal: grandTotal,
         cashPaid: cashVal || grandTotal,
-        change: changeAmount
+        change: changeAmount,
+        paymentMode: 'cash'
     };
     saveTransaction(transaction);
 
@@ -1191,11 +1314,41 @@ function setupEventListeners() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (quickAddOverlay.classList.contains('active')) closeQuickAdd();
+            else if (payKasbonModal && payKasbonModal.classList.contains('active')) closePayKasbonModal();
             else if (cartModal.classList.contains('active')) closeCartModal();
             else if (pinModal.classList.contains('active')) closePinModal();
             else if (adminModal.classList.contains('active')) closeAdmin();
         }
     });
+
+    // Payment mode switcher (Cash vs Kasbon)
+    if (pmBtnCash) {
+        pmBtnCash.addEventListener('click', () => switchPaymentMode('cash'));
+    }
+    if (pmBtnKasbon) {
+        pmBtnKasbon.addEventListener('click', () => switchPaymentMode('kasbon'));
+    }
+
+    // Pay Kasbon modal events
+    if (payKasbonClose) {
+        payKasbonClose.addEventListener('click', closePayKasbonModal);
+    }
+    if (payKasbonModal) {
+        payKasbonModal.addEventListener('click', (e) => {
+            if (e.target === payKasbonModal) closePayKasbonModal();
+        });
+    }
+    if (chipPayFull) {
+        chipPayFull.addEventListener('click', () => {
+            if (currentSelectedKasbonId) {
+                const item = kasbonList.find(k => k.id === currentSelectedKasbonId);
+                if (item && payKasbonAmount) payKasbonAmount.value = item.remainingAmount;
+            }
+        });
+    }
+    if (payKasbonForm) {
+        payKasbonForm.addEventListener('submit', processKasbonPayment);
+    }
 
     // Admin tabs
     document.querySelectorAll('.admin-tab').forEach(tab => {
@@ -1209,6 +1362,7 @@ function setupEventListeners() {
             const tabName = tab.dataset.tab;
             if (tabName === 'riwayat') renderTransactionHistory();
             else if (tabName === 'keuangan') { renderFinancialSummary(); renderExpenseList(); }
+            else if (tabName === 'kasbon') { renderKasbonSummary(); renderKasbonList(); }
             else if (tabName === 'stokRendah') renderLowStockList();
         });
     });
@@ -1611,7 +1765,30 @@ function renderFinancialSummary() {
     const filteredTx = filterByPeriod(transactions, period);
     const filteredExp = filterByPeriod(expenses, period);
 
-    const totalIncome = filteredTx.reduce((sum, tx) => sum + tx.grandTotal, 0);
+    // Cash from normal transactions + DP from Kasbon transactions
+    const totalTxIncome = filteredTx.reduce((sum, tx) => {
+        if (tx.paymentMode === 'kasbon') {
+            return sum + (tx.cashPaid || 0);
+        }
+        return sum + tx.grandTotal;
+    }, 0);
+
+    // Installments paid for Kasbon during this period
+    let kasbonRepayments = 0;
+    kasbonList.forEach(k => {
+        if (k.payments) {
+            k.payments.forEach(p => {
+                if (p.note !== 'Uang Muka / DP Kasir') {
+                    const matched = filterByPeriod([{ date: p.date }], period);
+                    if (matched.length > 0) {
+                        kasbonRepayments += p.amount;
+                    }
+                }
+            });
+        }
+    });
+
+    const totalIncome = totalTxIncome + kasbonRepayments;
     const totalExpense = filteredExp.reduce((sum, exp) => sum + exp.amount, 0);
     const profit = totalIncome - totalExpense;
 
@@ -1621,6 +1798,392 @@ function renderFinancialSummary() {
 
     // Apply profit color
     profitEl.className = 'finance-card-value finance-profit-value' + (profit < 0 ? ' profit-negative' : '');
+}
+
+// ══════════════════════════════════════════════════
+// ── Kasbon (Hutang Pelanggan) System ──────────────
+// ══════════════════════════════════════════════════
+
+function saveKasbonLocal() {
+    localStorage.setItem('sembako_kasbon', JSON.stringify(kasbonList));
+}
+
+function loadKasbonLocal() {
+    if (useFirebase) return;
+    const saved = localStorage.getItem('sembako_kasbon');
+    if (saved) {
+        kasbonList = JSON.parse(saved);
+        kasbonList.sort((a, b) => new Date(b.date) - new Date(a.date));
+        nextKasbonId = kasbonList.length > 0 ? Math.max(...kasbonList.map(k => k.id)) + 1 : 1;
+    }
+}
+
+function saveKasbonItem(kasbonItem) {
+    const index = kasbonList.findIndex(k => k.id === kasbonItem.id);
+    if (index >= 0) {
+        kasbonList[index] = kasbonItem;
+    } else {
+        kasbonList.unshift(kasbonItem);
+    }
+
+    if (useFirebase) {
+        db.ref('kasbon/' + kasbonItem.id).set(kasbonItem);
+    }
+    saveKasbonLocal();
+}
+
+function deleteKasbonItem(id) {
+    const item = kasbonList.find(k => k.id === id);
+    if (!item) return;
+
+    if (!confirm(`Yakin ingin menghapus catatan kasbon a.n "${item.customerName}"?`)) return;
+
+    kasbonList = kasbonList.filter(k => k.id !== id);
+    if (useFirebase) {
+        db.ref('kasbon/' + id).remove();
+    }
+    saveKasbonLocal();
+    renderKasbonList();
+    renderKasbonSummary();
+    renderFinancialSummary();
+    showToast(`Catatan kasbon a.n ${item.customerName} berhasil dihapus`, 'info');
+}
+
+function renderKasbonSummary() {
+    const unpaidEl = document.getElementById('kasbonTotalUnpaid');
+    const countEl = document.getElementById('kasbonCustomerCount');
+    const paidEl = document.getElementById('kasbonTotalPaid');
+    if (!unpaidEl) return;
+
+    const activeDebts = kasbonList.filter(k => k.status !== 'lunas');
+    const totalUnpaid = activeDebts.reduce((sum, k) => sum + (k.remainingAmount || 0), 0);
+    const totalPaid = kasbonList.reduce((sum, k) => sum + (k.paidAmount || 0), 0);
+
+    unpaidEl.textContent = formatRupiah(totalUnpaid);
+    countEl.textContent = `${activeDebts.length} Orang`;
+    paidEl.textContent = formatRupiah(totalPaid);
+}
+
+function renderKasbonList() {
+    const listEl = document.getElementById('kasbonList');
+    const emptyEl = document.getElementById('kasbonEmpty');
+    const searchInputEl = document.getElementById('kasbonSearchInput');
+    const filterSelectEl = document.getElementById('kasbonFilterStatus');
+    if (!listEl) return;
+
+    let filtered = [...kasbonList];
+
+    const statusVal = filterSelectEl ? filterSelectEl.value : 'all';
+    if (statusVal === 'belum_lunas') {
+        filtered = filtered.filter(k => k.status !== 'lunas');
+    } else if (statusVal === 'lunas') {
+        filtered = filtered.filter(k => k.status === 'lunas');
+    }
+
+    const searchVal = searchInputEl ? searchInputEl.value.trim().toLowerCase() : '';
+    if (searchVal) {
+        filtered = filtered.filter(k =>
+            k.customerName.toLowerCase().includes(searchVal) ||
+            (k.phone && k.phone.toLowerCase().includes(searchVal)) ||
+            (k.itemsDescription && k.itemsDescription.toLowerCase().includes(searchVal))
+        );
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'flex';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+    const dateOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+    listEl.innerHTML = filtered.map(item => {
+        const dateStr = new Date(item.date).toLocaleDateString('id-ID', dateOpts);
+
+        let badgeHtml = '';
+        if (item.status === 'lunas') {
+            badgeHtml = '<span class="kasbon-badge kasbon-badge-paid">✓ LUNAS</span>';
+        } else if (item.status === 'dicicil') {
+            badgeHtml = '<span class="kasbon-badge kasbon-badge-partial">⏳ DICICIL</span>';
+        } else {
+            badgeHtml = '<span class="kasbon-badge kasbon-badge-unpaid">⚠️ BELUM LUNAS</span>';
+        }
+
+        const itemsText = item.itemsDescription || (item.items ? item.items.map(i => `${i.qty} ${i.unit} ${i.name}`).join(', ') : 'Belanja Sembako');
+
+        return `
+            <div class="kasbon-card" data-kasbonid="${item.id}">
+                <div class="kasbon-card-header">
+                    <div class="kasbon-customer-info">
+                        <div class="kasbon-customer-name">
+                            👤 ${escapeHTML(item.customerName)}
+                        </div>
+                        ${item.phone ? `<span class="kasbon-customer-phone">📱 ${escapeHTML(item.phone)} &bull; ${dateStr}</span>` : `<span class="kasbon-customer-phone">${dateStr}</span>`}
+                    </div>
+                    ${badgeHtml}
+                </div>
+                <div class="kasbon-items-preview">
+                    📦 <strong>Barang:</strong> ${escapeHTML(itemsText)}
+                </div>
+                <div class="kasbon-card-body">
+                    <div class="kasbon-metric">
+                        <span class="kasbon-metric-label">Total Hutang</span>
+                        <span class="kasbon-metric-value">${formatRupiah(item.totalAmount)}</span>
+                    </div>
+                    <div class="kasbon-metric">
+                        <span class="kasbon-metric-label">Sudah Dibayar</span>
+                        <span class="kasbon-metric-value" style="color:var(--emerald-400);">${formatRupiah(item.paidAmount)}</span>
+                    </div>
+                    <div class="kasbon-metric">
+                        <span class="kasbon-metric-label">Sisa Piutang</span>
+                        <span class="kasbon-metric-value remaining">${formatRupiah(item.remainingAmount)}</span>
+                    </div>
+                </div>
+                <div class="kasbon-card-footer">
+                    <div class="kasbon-actions">
+                        ${item.status !== 'lunas' ? `
+                            <button class="btn-kasbon-pay" data-kasbonid="${item.id}">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                Bayar / Cicil
+                            </button>
+                        ` : ''}
+                        <button class="btn-kasbon-print" data-kasbonid="${item.id}" title="Cetak Nota">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            Nota
+                        </button>
+                    </div>
+                    <button class="riwayat-delete-btn btn-delete-kasbon" data-kasbonid="${item.id}" title="Hapus Data Kasbon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openPayKasbonModal(kasbonId) {
+    const item = kasbonList.find(k => k.id === kasbonId);
+    if (!item) return;
+
+    currentSelectedKasbonId = kasbonId;
+
+    document.getElementById('payKasbonCustomerName').textContent = item.customerName;
+    document.getElementById('payKasbonTotalBelanja').textContent = formatRupiah(item.totalAmount);
+    document.getElementById('payKasbonTotalPaid').textContent = formatRupiah(item.paidAmount);
+    document.getElementById('payKasbonRemaining').textContent = formatRupiah(item.remainingAmount);
+
+    if (payKasbonAmount) {
+        payKasbonAmount.value = '';
+        payKasbonAmount.max = item.remainingAmount;
+    }
+    if (payKasbonNote) {
+        payKasbonNote.value = '';
+    }
+
+    renderPayHistoryList(item);
+
+    if (payKasbonModal) {
+        payKasbonModal.classList.add('active');
+        setTimeout(() => { if (payKasbonAmount) payKasbonAmount.focus(); }, 150);
+    }
+}
+
+function closePayKasbonModal() {
+    if (payKasbonModal) {
+        payKasbonModal.classList.remove('active');
+    }
+    currentSelectedKasbonId = null;
+}
+
+function renderPayHistoryList(kasbonItem) {
+    const list = document.getElementById('payHistoryList');
+    if (!list) return;
+
+    if (!kasbonItem.payments || kasbonItem.payments.length === 0) {
+        list.innerHTML = '<div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:10px;">Belum ada cicilan tercatat</div>';
+        return;
+    }
+
+    const dateOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+    list.innerHTML = kasbonItem.payments.map(p => `
+        <div class="pay-history-item">
+            <div class="pay-history-meta">
+                <span>${escapeHTML(p.note || 'Pembayaran Cicilan')}</span>
+                <span class="pay-history-date">${new Date(p.date).toLocaleDateString('id-ID', dateOpts)}</span>
+            </div>
+            <span class="pay-history-amount">+ ${formatRupiah(p.amount)}</span>
+        </div>
+    `).join('');
+}
+
+function processKasbonPayment(e) {
+    e.preventDefault();
+    if (!currentSelectedKasbonId) return;
+
+    const item = kasbonList.find(k => k.id === currentSelectedKasbonId);
+    if (!item) return;
+
+    const amount = parseInt(payKasbonAmount.value);
+    const note = payKasbonNote.value.trim();
+
+    if (isNaN(amount) || amount <= 0) {
+        showToast('Nominal pembayaran tidak valid!', 'error');
+        return;
+    }
+    if (amount > item.remainingAmount) {
+        showToast(`Nominal melebihi sisa hutang (${formatRupiah(item.remainingAmount)})!`, 'error');
+        return;
+    }
+
+    item.paidAmount += amount;
+    item.remainingAmount -= amount;
+    if (item.remainingAmount === 0) {
+        item.status = 'lunas';
+    } else {
+        item.status = 'dicicil';
+    }
+
+    if (!item.payments) item.payments = [];
+    item.payments.push({
+        id: item.payments.length + 1,
+        date: new Date().toISOString(),
+        amount: amount,
+        note: note || (item.remainingAmount === 0 ? 'Pelunasan Kasbon' : `Cicilan Ke-${item.payments.length + 1}`)
+    });
+
+    saveKasbonItem(item);
+    closePayKasbonModal();
+    renderKasbonList();
+    renderKasbonSummary();
+    renderFinancialSummary();
+    showToast(`✓ Pembayaran ${formatRupiah(amount)} a.n ${item.customerName} berhasil disimpan!`, 'success');
+}
+
+function addManualKasbon(e) {
+    e.preventDefault();
+    const nameEl = document.getElementById('manualKasbonName');
+    const phoneEl = document.getElementById('manualKasbonPhone');
+    const descEl = document.getElementById('manualKasbonDesc');
+    const totalEl = document.getElementById('manualKasbonTotal');
+    const dpEl = document.getElementById('manualKasbonDP');
+
+    const name = nameEl.value.trim();
+    const phone = phoneEl ? phoneEl.value.trim() : '';
+    const desc = descEl.value.trim();
+    const total = parseInt(totalEl.value);
+    const dp = parseInt(dpEl ? dpEl.value : 0) || 0;
+
+    if (!name) { showToast('Nama pelanggan wajib diisi!', 'error'); return; }
+    if (!desc) { showToast('Keterangan barang belanja wajib diisi!', 'error'); return; }
+    if (isNaN(total) || total <= 0) { showToast('Total hutang tidak valid!', 'error'); return; }
+    if (dp < 0 || dp > total) { showToast('DP tidak valid!', 'error'); return; }
+
+    const paid = dp;
+    const remaining = total - paid;
+    const status = remaining === 0 ? 'lunas' : (paid > 0 ? 'dicicil' : 'belum_lunas');
+
+    const item = {
+        id: nextKasbonId++,
+        customerName: name,
+        phone: phone,
+        date: new Date().toISOString(),
+        totalAmount: total,
+        paidAmount: paid,
+        remainingAmount: remaining,
+        status: status,
+        itemsDescription: desc,
+        items: [],
+        payments: paid > 0 ? [{ id: 1, date: new Date().toISOString(), amount: paid, note: 'Uang Muka / DP' }] : []
+    };
+
+    saveKasbonItem(item);
+    document.getElementById('manualKasbonForm').reset();
+    document.getElementById('manualKasbonSection').style.display = 'none';
+    renderKasbonList();
+    renderKasbonSummary();
+    renderFinancialSummary();
+    showToast(`Catatan kasbon manual a.n ${name} berhasil disimpan!`, 'success');
+}
+
+function printKasbonReceipt(kasbonId) {
+    const item = kasbonList.find(k => k.id === kasbonId);
+    if (!item) return;
+
+    const dateStr = new Date(item.date).toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const printWindow = window.open('', '_blank', 'width=450,height=600');
+    if (!printWindow) {
+        showToast('Izinkan popup browser untuk mencetak nota', 'error');
+        return;
+    }
+
+    const itemsHtml = item.items && item.items.length > 0
+        ? item.items.map(i => `<tr style="border-bottom:1px solid #eee;"><td style="padding:4px 0;">${i.name} x${i.qty} ${i.unit}</td><td style="text-align:right; padding:4px 0;">${formatRupiah(i.subtotal)}</td></tr>`).join('')
+        : `<tr><td colspan="2" style="padding:6px 0;">${escapeHTML(item.itemsDescription)}</td></tr>`;
+
+    const paymentsHtml = (item.payments || []).map(p =>
+        `<div style="display:flex; justify-content:space-between; font-size:11px; color:#555; margin-top:2px;"><span>${new Date(p.date).toLocaleDateString('id-ID')} - ${escapeHTML(p.note || 'Cicilan')}</span><span style="font-weight:bold; color:#059669;">+ ${formatRupiah(p.amount)}</span></div>`
+    ).join('');
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Nota Kasbon - ${escapeHTML(item.customerName)}</title>
+            <style>
+                body { font-family: 'Courier New', monospace, sans-serif; padding: 15px; width: 300px; margin: 0 auto; color: #111; }
+                .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                .header h2 { margin: 0; font-size: 18px; }
+                .header p { margin: 2px 0; font-size: 11px; color: #555; }
+                .info { margin-bottom: 10px; font-size: 12px; }
+                .info div { margin-bottom: 3px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+                .summary { border-top: 2px dashed #000; padding-top: 8px; font-size: 12px; }
+                .summary-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                .highlight { font-weight: bold; font-size: 14px; color: #e11d48; }
+                .footer { text-align: center; margin-top: 15px; font-size: 10px; color: #777; border-top: 1px solid #ccc; padding-top: 8px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>WARUNG JIHAN</h2>
+                <p>Nota Catatan Kasbon / Piutang</p>
+            </div>
+            <div class="info">
+                <div><strong>Pelanggan:</strong> ${escapeHTML(item.customerName)}</div>
+                ${item.phone ? `<div><strong>No. HP:</strong> ${escapeHTML(item.phone)}</div>` : ''}
+                <div><strong>Tanggal:</strong> ${dateStr}</div>
+                <div><strong>Status:</strong> ${item.status.toUpperCase()}</div>
+            </div>
+            <table>
+                <thead>
+                    <tr style="border-bottom:1px solid #000; text-align:left;">
+                        <th>Barang</th>
+                        <th style="text-align:right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+            <div class="summary">
+                <div class="summary-row"><span>Total Belanja:</span><span>${formatRupiah(item.totalAmount)}</span></div>
+                <div class="summary-row"><span>Sudah Dibayar:</span><span>${formatRupiah(item.paidAmount)}</span></div>
+                <div class="summary-row highlight"><span>SISA HUTANG:</span><span>${formatRupiah(item.remainingAmount)}</span></div>
+            </div>
+            ${paymentsHtml ? `<div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:6px;"><strong style="font-size:11px;">Riwayat Cicilan:</strong>${paymentsHtml}</div>` : ''}
+            <div class="footer">
+                <p>Terima kasih atas kepercayaannya 🙏</p>
+                <p>Simpan nota ini sebagai bukti transaksi</p>
+            </div>
+            <script>window.onload = function() { window.print(); }</script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 
 // ══════════════════════════════════════════════════
@@ -1757,6 +2320,45 @@ function setupNewTabListeners() {
             const delBtn = e.target.closest('.riwayat-delete-btn');
             if (delBtn && delBtn.dataset.expid) {
                 deleteExpense(parseInt(delBtn.dataset.expid));
+            }
+        });
+    }
+
+    // Kasbon listeners
+    const kasbonSearch = document.getElementById('kasbonSearchInput');
+    if (kasbonSearch) {
+        kasbonSearch.addEventListener('input', renderKasbonList);
+    }
+    const kasbonFilter = document.getElementById('kasbonFilterStatus');
+    if (kasbonFilter) {
+        kasbonFilter.addEventListener('change', renderKasbonList);
+    }
+    const btnToggleManualKasbon = document.getElementById('btnToggleManualKasbon');
+    if (btnToggleManualKasbon) {
+        btnToggleManualKasbon.addEventListener('click', () => {
+            const sec = document.getElementById('manualKasbonSection');
+            if (sec) sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+    const manualKasbonForm = document.getElementById('manualKasbonForm');
+    if (manualKasbonForm) {
+        manualKasbonForm.addEventListener('submit', addManualKasbon);
+    }
+    const kasbonListEl = document.getElementById('kasbonList');
+    if (kasbonListEl) {
+        kasbonListEl.addEventListener('click', (e) => {
+            const payBtn = e.target.closest('.btn-kasbon-pay');
+            const printBtn = e.target.closest('.btn-kasbon-print');
+            const deleteBtn = e.target.closest('.btn-delete-kasbon');
+
+            if (payBtn && payBtn.dataset.kasbonid) {
+                openPayKasbonModal(parseInt(payBtn.dataset.kasbonid));
+            }
+            if (printBtn && printBtn.dataset.kasbonid) {
+                printKasbonReceipt(parseInt(printBtn.dataset.kasbonid));
+            }
+            if (deleteBtn && deleteBtn.dataset.kasbonid) {
+                deleteKasbonItem(parseInt(deleteBtn.dataset.kasbonid));
             }
         });
     }

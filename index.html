@@ -218,6 +218,7 @@
                     <button class="admin-tab" data-tab="add">Tambah Produk</button>
                     <button class="admin-tab" data-tab="riwayat">📋 Riwayat</button>
                     <button class="admin-tab" data-tab="keuangan">💰 Keuangan</button>
+                    <button class="admin-tab" data-tab="kasbon">📒 Kasbon</button>
                     <button class="admin-tab" data-tab="stokRendah">⚠️ Stok Rendah</button>
                 </div>
 
@@ -394,6 +395,105 @@
                     </div>
                 </div>
 
+                <!-- Kasbon Tab -->
+                <div class="admin-tab-content" id="tabKasbon">
+                    <!-- Summary Cards -->
+                    <div class="finance-summary-cards">
+                        <div class="finance-card finance-card-expense">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Total Sisa Piutang</span>
+                                <span class="finance-card-value finance-expense-value" id="kasbonTotalUnpaid">Rp 0</span>
+                            </div>
+                        </div>
+                        <div class="finance-card finance-card-income">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Pelanggan Mengutang</span>
+                                <span class="finance-card-value finance-income-value" id="kasbonCustomerCount">0 Orang</span>
+                            </div>
+                        </div>
+                        <div class="finance-card finance-card-profit">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Total Terbayar</span>
+                                <span class="finance-card-value finance-profit-value" id="kasbonTotalPaid">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar (Search & Filter & Add Manual) -->
+                    <div class="kasbon-toolbar">
+                        <div class="kasbon-search-box">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            <input type="text" id="kasbonSearchInput" placeholder="Cari nama pelanggan...">
+                        </div>
+                        <select id="kasbonFilterStatus" class="riwayat-filter-select">
+                            <option value="all">Semua Status</option>
+                            <option value="belum_lunas" selected>Belum Lunas / Dicicil</option>
+                            <option value="lunas">Sudah Lunas</option>
+                        </select>
+                        <button class="btn-toggle-manual-kasbon" id="btnToggleManualKasbon" type="button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Catat Manual</span>
+                        </button>
+                    </div>
+
+                    <!-- Manual Kasbon Form -->
+                    <div class="manual-kasbon-section" id="manualKasbonSection" style="display:none;">
+                        <div class="expense-form-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+                            <span>Tambah Catatan Kasbon Manual</span>
+                        </div>
+                        <form id="manualKasbonForm" class="expense-form">
+                            <div class="expense-form-row">
+                                <div class="form-group">
+                                    <label for="manualKasbonName">Nama Pelanggan *</label>
+                                    <input type="text" id="manualKasbonName" placeholder="Contoh: Pak Ahmad" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="manualKasbonPhone">No. HP / Catatan</label>
+                                    <input type="text" id="manualKasbonPhone" placeholder="Contoh: 08123456789 / Rumah Ujung">
+                                </div>
+                            </div>
+                            <div class="expense-form-row">
+                                <div class="form-group">
+                                    <label for="manualKasbonDesc">Barang / Keterangan Belanja *</label>
+                                    <input type="text" id="manualKasbonDesc" placeholder="Contoh: Beras 5kg & Minyak 2L" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="manualKasbonTotal">Total Hutang (Rp) *</label>
+                                    <input type="number" id="manualKasbonTotal" placeholder="Contoh: 100000" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="manualKasbonDP">Uang Muka / DP (Rp)</label>
+                                    <input type="number" id="manualKasbonDP" placeholder="0 jika tanpa DP" min="0" value="0">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-add-expense">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Simpan Catatan Kasbon
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Customer Kasbon List -->
+                    <div class="kasbon-list" id="kasbonList">
+                        <!-- Customer cards injected here -->
+                    </div>
+
+                    <div class="riwayat-empty" id="kasbonEmpty" style="display:none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <p>Belum ada catatan kasbon pelanggan</p>
+                    </div>
+                </div>
+
                 <!-- Stok Rendah Tab -->
                 <div class="admin-tab-content" id="tabStokRendah">
                     <div class="low-stock-info-bar">
@@ -514,8 +614,23 @@
                         <span class="cart-grand-total-value" id="cartGrandTotal">Rp 0</span>
                     </div>
 
+                    <!-- Payment Method Toggle (Cash vs Kasbon) -->
+                    <div class="payment-method-section">
+                        <label class="pm-section-label">Metode Pembayaran</label>
+                        <div class="payment-method-toggle">
+                            <button type="button" class="pm-btn active" id="pmBtnCash" data-mode="cash">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+                                <span>Tunai (Lunas)</span>
+                            </button>
+                            <button type="button" class="pm-btn" id="pmBtnKasbon" data-mode="kasbon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                <span>Kasbon (Hutang)</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Cash & Change Calculator -->
-                    <div class="cart-calculator-section">
+                    <div class="cart-calculator-section" id="cashCalculatorSection">
                         <div class="calc-header">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>
@@ -540,6 +655,28 @@
                         </div>
                     </div>
 
+                    <!-- Kasbon Input Section -->
+                    <div class="cart-kasbon-section" id="cartKasbonSection" style="display:none;">
+                        <div class="calc-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            </svg>
+                            <span>Informasi Hutang Pelanggan</span>
+                        </div>
+                        <div class="calc-input-group">
+                            <label for="cartCustomerName">Nama Pelanggan <span style="color:#fb7185;">*</span></label>
+                            <input type="text" id="cartCustomerName" placeholder="Contoh: Pak Ahmad" autocomplete="off">
+                        </div>
+                        <div class="calc-input-group" style="margin-top:10px;">
+                            <label for="cartCustomerPhone">No. HP / Catatan (Opsional)</label>
+                            <input type="text" id="cartCustomerPhone" placeholder="Contoh: 08123456789 / Rumah Merah" autocomplete="off">
+                        </div>
+                        <div class="calc-input-group" style="margin-top:10px;">
+                            <label for="cartKasbonDP">Uang Muka / DP (Rp)</label>
+                            <input type="number" id="cartKasbonDP" placeholder="0 jika tanpa DP" min="0" value="0" autocomplete="off">
+                        </div>
+                    </div>
+
                     <button class="btn-process-cart" id="btnProcessCart" type="button">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"/>
@@ -553,6 +690,60 @@
                         Kosongkan Keranjang
                     </button>
                     <p class="cart-note">Stok otomatis berkurang dan tersimpan ke database saat klik proses</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pay Kasbon -->
+    <div class="modal-overlay" id="payKasbonModal">
+        <div class="modal pay-kasbon-modal">
+            <div class="modal-header">
+                <h2>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Bayar / Cicil Kasbon
+                </h2>
+                <button class="modal-close" id="payKasbonClose">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="pay-kasbon-info-card">
+                    <div class="pk-customer-name" id="payKasbonCustomerName">Nama Pelanggan</div>
+                    <div class="pk-debt-row">
+                        <span>Total Belanja: <strong id="payKasbonTotalBelanja">Rp 0</strong></span>
+                        <span>Sudah Dibayar: <strong id="payKasbonTotalPaid">Rp 0</strong></span>
+                    </div>
+                    <div class="pk-remaining-box">
+                        <span>Sisa Hutang:</span>
+                        <span class="pk-remaining-val" id="payKasbonRemaining">Rp 0</span>
+                    </div>
+                </div>
+
+                <form id="payKasbonForm" class="pay-kasbon-form">
+                    <div class="form-group">
+                        <label for="payKasbonAmount">Nominal Pembayaran / Cicilan (Rp) *</label>
+                        <input type="number" id="payKasbonAmount" placeholder="Masukkan nominal bayar" min="1" required>
+                    </div>
+                    <div class="calc-chips" style="margin-bottom:14px;">
+                        <button type="button" class="calc-chip" id="chipPayFull">Lunas Sesuai Sisa</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="payKasbonNote">Catatan Pembayaran (Opsional)</label>
+                        <input type="text" id="payKasbonNote" placeholder="Contoh: Cicilan ke-1 / Titip via Wa">
+                    </div>
+                    <button type="submit" class="btn-pin-submit" style="margin-top:12px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        Simpan Pembayaran
+                    </button>
+                </form>
+
+                <!-- History Timeline of Payments -->
+                <div class="pay-history-section">
+                    <h4 class="pay-history-title">Riwayat Pembayaran Cicilan</h4>
+                    <div class="pay-history-list" id="payHistoryList">
+                        <!-- List items injected dynamically -->
+                    </div>
                 </div>
             </div>
         </div>

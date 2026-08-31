@@ -2997,3 +2997,396 @@ body::before {
         font-size: 0.9rem;
     }
 }
+
+/* ============================================
+   Kasbon (Customer Debt) System
+   ============================================ */
+.payment-method-section {
+    margin-top: 16px;
+    margin-bottom: 12px;
+}
+
+.pm-section-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.payment-method-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.pm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.pm-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pm-btn.active {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.cart-kasbon-section {
+    margin-top: 14px;
+    padding: 16px;
+    background: rgba(244, 63, 94, 0.05);
+    border: 1px solid rgba(244, 63, 94, 0.2);
+    border-radius: var(--radius-md);
+}
+
+/* Kasbon Toolbar & Manual Form */
+.kasbon-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.kasbon-search-box {
+    flex: 1;
+    min-width: 180px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.kasbon-search-box svg {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+}
+
+.kasbon-search-box input {
+    width: 100%;
+    padding: 9px 12px 9px 36px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+
+.kasbon-search-box input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+}
+
+.btn-toggle-manual-kasbon {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-toggle-manual-kasbon:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.manual-kasbon-section {
+    margin-bottom: 16px;
+}
+
+/* Kasbon Customer Cards */
+.kasbon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kasbon-card {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    transition: var(--transition-fast);
+}
+
+.kasbon-card:hover {
+    border-color: var(--border-hover);
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.kasbon-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.kasbon-customer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.kasbon-customer-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kasbon-customer-phone {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.kasbon-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.kasbon-badge-unpaid {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--rose-400);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.kasbon-badge-partial {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--amber-400);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.kasbon-badge-paid {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--emerald-400);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.kasbon-card-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+}
+
+.kasbon-metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.kasbon-metric-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.kasbon-metric-value {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+}
+
+.kasbon-metric-value.remaining {
+    color: var(--rose-400);
+}
+
+.kasbon-items-preview {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.4;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+}
+
+.kasbon-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.kasbon-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-kasbon-pay {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: linear-gradient(135deg, var(--emerald-600), var(--emerald-500));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-kasbon-pay:hover {
+    filter: brightness(1.1);
+}
+
+.btn-kasbon-print {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-300);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-kasbon-print:hover {
+    background: rgba(99, 102, 241, 0.25);
+}
+
+/* Pay Kasbon Modal */
+.pay-kasbon-modal {
+    max-width: 480px;
+}
+
+.pay-kasbon-info-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.pk-customer-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.pk-debt-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.pk-remaining-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(244, 63, 94, 0.1);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.pk-remaining-val {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--rose-400);
+}
+
+.pay-history-section {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pay-history-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.pay-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.pay-history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+}
+
+.pay-history-amount {
+    font-weight: 700;
+    color: var(--emerald-400);
+}
+
+.pay-history-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.pay-history-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+

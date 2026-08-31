@@ -113,6 +113,10 @@ let isAdminLoggedIn = false;
 let db = null;
 let useFirebase = false;
 let cart = []; // { productId, qty }
+let transactions = []; // riwayat transaksi penjualan
+let expenses = []; // riwayat pengeluaran
+let nextTransactionId = 1;
+let nextExpenseId = 1;
 
 // ── DOM Elements ───────────────────────────────
 const productsGrid = document.getElementById('productsGrid');
@@ -188,6 +192,9 @@ function init() {
     initFirebase();
     createParticles();
     setupEventListeners();
+    loadTransactionsLocal();
+    loadExpensesLocal();
+    checkLowStock();
 }
 
 // ── Firebase Init ──────────────────────────────
@@ -242,6 +249,7 @@ function listenToFirebase() {
         }
         renderProducts();
         updateStats();
+        checkLowStock();
     }, (error) => {
         console.error('Firebase read error:', error);
         showToast('Gagal membaca data dari server', 'error');
@@ -255,6 +263,36 @@ function listenToFirebase() {
         const ts = snapshot.val();
         if (ts) {
             displayLastUpdated(new Date(ts));
+        }
+    });
+
+    // Listen to transactions
+    db.ref('transactions').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            transactions = Object.values(data).sort((a, b) => new Date(b.date) - new Date(a.date));
+            nextTransactionId = Math.max(...transactions.map(t => t.id), 0) + 1;
+        } else {
+            transactions = [];
+        }
+        if (adminModal.classList.contains('active')) {
+            renderTransactionHistory();
+            renderFinancialSummary();
+        }
+    });
+
+    // Listen to expenses
+    db.ref('expenses').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            expenses = Object.values(data).sort((a, b) => new Date(b.date) - new Date(a.date));
+            nextExpenseId = Math.max(...expenses.map(e => e.id), 0) + 1;
+        } else {
+            expenses = [];
+        }
+        if (adminModal.classList.contains('active')) {
+            renderExpenseList();
+            renderFinancialSummary();
         }
     });
 }
@@ -411,9 +449,12 @@ function formatRupiah(num) {
 }
 
 function escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // ── Update Stats ───────────────────────────────
@@ -427,6 +468,7 @@ function updateStats() {
     animateNumber(totalStockEl, totalStock);
     animateNumber(availableProductsEl, available);
     animateNumber(emptyStockEl, empty);
+    checkLowStock();
 }
 
 function animateNumber(element, target) {
@@ -550,6 +592,14 @@ function openAdmin() {
     adminModal.classList.add('active');
     document.body.style.overflow = 'hidden';
     renderAdminList();
+    // Also render content for active tab
+    const activeTab = document.querySelector('.admin-tab.active');
+    if (activeTab) {
+        const tabName = activeTab.dataset.tab;
+        if (tabName === 'riwayat') renderTransactionHistory();
+        else if (tabName === 'keuangan') { renderFinancialSummary(); renderExpenseList(); }
+        else if (tabName === 'stokRendah') renderLowStockList();
+    }
 }
 
 function closeAdmin() {
@@ -980,13 +1030,25 @@ function processCart() {
 
     let grandTotal = 0;
     let totalItems = 0;
+    const transactionItems = [];
 
     // Reduce stock for all items
     for (const item of cart) {
         const product = products.find(p => p.id === item.productId);
         product.stock -= item.qty;
-        grandTotal += product.price * item.qty;
+        const subtotal = product.price * item.qty;
+        grandTotal += subtotal;
         totalItems += item.qty;
+
+        transactionItems.push({
+            productId: product.id,
+            name: product.name,
+            emoji: product.emoji || CATEGORY_EMOJIS[product.category] || '📦',
+            price: product.price,
+            qty: item.qty,
+            unit: product.unit,
+            subtotal: subtotal
+        });
 
         if (useFirebase) {
             firebaseSaveProduct(product);
@@ -1001,10 +1063,23 @@ function processCart() {
     // Check change
     let changeMsg = '';
     const cashVal = parseInt(cartCashPaid?.value) || 0;
+    let changeAmount = 0;
     if (cashVal >= grandTotal) {
-        const change = cashVal - grandTotal;
-        changeMsg = ` | Kembalian: ${formatRupiah(change)}`;
+        changeAmount = cashVal - grandTotal;
+        changeMsg = ` | Kembalian: ${formatRupiah(changeAmount)}`;
     }
+
+    // ── Save Transaction ──
+    const transaction = {
+        id: nextTransactionId++,
+        date: new Date().toISOString(),
+        items: transactionItems,
+        totalItems: totalItems,
+        grandTotal: grandTotal,
+        cashPaid: cashVal || grandTotal,
+        change: changeAmount
+    };
+    saveTransaction(transaction);
 
     const itemCount = cart.length;
     cart = [];
@@ -1130,6 +1205,11 @@ function setupEventListeners() {
             tab.classList.add('active');
             const target = document.getElementById('tab' + capitalize(tab.dataset.tab));
             if (target) target.classList.add('active');
+            // Render new tab content
+            const tabName = tab.dataset.tab;
+            if (tabName === 'riwayat') renderTransactionHistory();
+            else if (tabName === 'keuangan') { renderFinancialSummary(); renderExpenseList(); }
+            else if (tabName === 'stokRendah') renderLowStockList();
         });
     });
 
@@ -1259,10 +1339,427 @@ function setupEventListeners() {
     if (btnClearCart) {
         btnClearCart.addEventListener('click', clearCart);
     }
+
+    // Setup new tab listeners (Riwayat, Keuangan, Stok Rendah)
+    setupNewTabListeners();
 }
 
 function capitalize(str) {
     return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+}
+
+// ══════════════════════════════════════════════════
+// ── Transaction History System ────────────────────
+// ══════════════════════════════════════════════════
+
+function saveTransaction(transaction) {
+    transactions.unshift(transaction);
+    if (useFirebase) {
+        db.ref('transactions/' + transaction.id).set(transaction);
+    }
+    saveTransactionsLocal();
+}
+
+function saveTransactionsLocal() {
+    localStorage.setItem('sembako_transactions', JSON.stringify(transactions));
+}
+
+function loadTransactionsLocal() {
+    if (useFirebase) return; // Firebase listener handles this
+    const saved = localStorage.getItem('sembako_transactions');
+    if (saved) {
+        transactions = JSON.parse(saved);
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        nextTransactionId = transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1;
+    }
+}
+
+function deleteTransaction(id) {
+    if (!confirm('Hapus riwayat transaksi ini?')) return;
+    transactions = transactions.filter(t => t.id !== id);
+    if (useFirebase) {
+        db.ref('transactions/' + id).remove();
+    }
+    saveTransactionsLocal();
+    renderTransactionHistory();
+    renderFinancialSummary();
+    showToast('Riwayat transaksi dihapus', 'info');
+}
+
+function clearAllTransactions() {
+    if (!confirm('Hapus SEMUA riwayat transaksi? Data tidak bisa dikembalikan!')) return;
+    transactions = [];
+    nextTransactionId = 1;
+    if (useFirebase) {
+        db.ref('transactions').remove();
+    }
+    saveTransactionsLocal();
+    renderTransactionHistory();
+    renderFinancialSummary();
+    showToast('Semua riwayat transaksi dihapus', 'info');
+}
+
+function filterByPeriod(items, period) {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return items.filter(item => {
+        const d = new Date(item.date);
+        switch (period) {
+            case 'today': return d >= startOfDay;
+            case 'week': return d >= startOfWeek;
+            case 'month': return d >= startOfMonth;
+            default: return true;
+        }
+    });
+}
+
+function renderTransactionHistory() {
+    const riwayatList = document.getElementById('riwayatList');
+    const riwayatEmpty = document.getElementById('riwayatEmpty');
+    const filterEl = document.getElementById('riwayatFilterPeriod');
+    if (!riwayatList) return;
+
+    const period = filterEl ? filterEl.value : 'month';
+    const filtered = filterByPeriod(transactions, period);
+
+    if (filtered.length === 0) {
+        riwayatList.innerHTML = '';
+        riwayatEmpty.style.display = 'flex';
+        return;
+    }
+
+    riwayatEmpty.style.display = 'none';
+    const dateOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+    riwayatList.innerHTML = filtered.map(tx => {
+        const dateStr = new Date(tx.date).toLocaleDateString('id-ID', dateOpts);
+        const itemsHtml = (tx.items || []).map(item =>
+            `<div class="riwayat-product-row">
+                <span class="rp-name">${item.emoji || ''} ${escapeHTML(item.name)}</span>
+                <span class="rp-qty">${item.qty} ${item.unit}</span>
+                <span class="rp-sub">${formatRupiah(item.subtotal)}</span>
+            </div>`
+        ).join('');
+
+        const payInfo = tx.cashPaid > 0 ? `Bayar: ${formatRupiah(tx.cashPaid)}` : '';
+        const changeInfo = tx.change > 0 ? `Kembali: ${formatRupiah(tx.change)}` : '';
+
+        return `
+            <div class="riwayat-item">
+                <div class="riwayat-item-header">
+                    <span class="riwayat-item-date">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${dateStr}
+                    </span>
+                    <span class="riwayat-item-total">${formatRupiah(tx.grandTotal)}</span>
+                </div>
+                <div class="riwayat-item-products">
+                    ${itemsHtml}
+                </div>
+                <div class="riwayat-item-footer">
+                    <div class="riwayat-payment-info">
+                        ${payInfo ? `<span>${payInfo}</span>` : ''}
+                        ${changeInfo ? `<span>${changeInfo}</span>` : ''}
+                        <span>${tx.totalItems} barang</span>
+                    </div>
+                    <button class="riwayat-delete-btn" data-txid="${tx.id}" title="Hapus">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// ── Expense (Pengeluaran) System ──────────────────
+// ══════════════════════════════════════════════════
+
+function saveExpense(expense) {
+    expenses.unshift(expense);
+    if (useFirebase) {
+        db.ref('expenses/' + expense.id).set(expense);
+    }
+    saveExpensesLocal();
+}
+
+function saveExpensesLocal() {
+    localStorage.setItem('sembako_expenses', JSON.stringify(expenses));
+}
+
+function loadExpensesLocal() {
+    if (useFirebase) return;
+    const saved = localStorage.getItem('sembako_expenses');
+    if (saved) {
+        expenses = JSON.parse(saved);
+        expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+        nextExpenseId = expenses.length > 0 ? Math.max(...expenses.map(e => e.id)) + 1 : 1;
+    }
+}
+
+function addExpense(e) {
+    e.preventDefault();
+    const descEl = document.getElementById('expenseDesc');
+    const amountEl = document.getElementById('expenseAmount');
+
+    const desc = descEl.value.trim();
+    const amount = parseInt(amountEl.value);
+
+    if (!desc) {
+        showToast('Keterangan pengeluaran harus diisi!', 'error');
+        return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+        showToast('Jumlah pengeluaran tidak valid!', 'error');
+        return;
+    }
+
+    const expense = {
+        id: nextExpenseId++,
+        date: new Date().toISOString(),
+        description: desc,
+        amount: amount
+    };
+
+    saveExpense(expense);
+    descEl.value = '';
+    amountEl.value = '';
+    renderExpenseList();
+    renderFinancialSummary();
+    showToast(`Pengeluaran "${desc}" (${formatRupiah(amount)}) tersimpan!`, 'success');
+}
+
+function deleteExpense(id) {
+    if (!confirm('Hapus pengeluaran ini?')) return;
+    expenses = expenses.filter(e => e.id !== id);
+    if (useFirebase) {
+        db.ref('expenses/' + id).remove();
+    }
+    saveExpensesLocal();
+    renderExpenseList();
+    renderFinancialSummary();
+    showToast('Pengeluaran dihapus', 'info');
+}
+
+function clearAllExpenses() {
+    if (!confirm('Hapus SEMUA riwayat pengeluaran? Data tidak bisa dikembalikan!')) return;
+    expenses = [];
+    nextExpenseId = 1;
+    if (useFirebase) {
+        db.ref('expenses').remove();
+    }
+    saveExpensesLocal();
+    renderExpenseList();
+    renderFinancialSummary();
+    showToast('Semua pengeluaran dihapus', 'info');
+}
+
+function renderExpenseList() {
+    const expenseList = document.getElementById('expenseList');
+    const expenseEmpty = document.getElementById('expenseEmpty');
+    const filterEl = document.getElementById('financeFilterPeriod');
+    if (!expenseList) return;
+
+    const period = filterEl ? filterEl.value : 'month';
+    const filtered = filterByPeriod(expenses, period);
+
+    if (filtered.length === 0) {
+        expenseList.innerHTML = '';
+        expenseEmpty.style.display = 'flex';
+        return;
+    }
+
+    expenseEmpty.style.display = 'none';
+    const dateOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+    expenseList.innerHTML = filtered.map(exp => {
+        const dateStr = new Date(exp.date).toLocaleDateString('id-ID', dateOpts);
+        return `
+            <div class="expense-item">
+                <div class="expense-item-info">
+                    <span class="expense-item-desc">${escapeHTML(exp.description)}</span>
+                    <span class="expense-item-date">${dateStr}</span>
+                </div>
+                <span class="expense-item-amount">- ${formatRupiah(exp.amount)}</span>
+                <div class="expense-item-actions">
+                    <button class="riwayat-delete-btn" data-expid="${exp.id}" title="Hapus">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// ── Financial Summary (Keuangan) ──────────────────
+// ══════════════════════════════════════════════════
+
+function renderFinancialSummary() {
+    const incomeEl = document.getElementById('financeIncome');
+    const expenseEl = document.getElementById('financeExpense');
+    const profitEl = document.getElementById('financeProfit');
+    const filterEl = document.getElementById('financeFilterPeriod');
+    if (!incomeEl) return;
+
+    const period = filterEl ? filterEl.value : 'month';
+
+    const filteredTx = filterByPeriod(transactions, period);
+    const filteredExp = filterByPeriod(expenses, period);
+
+    const totalIncome = filteredTx.reduce((sum, tx) => sum + tx.grandTotal, 0);
+    const totalExpense = filteredExp.reduce((sum, exp) => sum + exp.amount, 0);
+    const profit = totalIncome - totalExpense;
+
+    incomeEl.textContent = formatRupiah(totalIncome);
+    expenseEl.textContent = formatRupiah(totalExpense);
+    profitEl.textContent = (profit < 0 ? '- ' : '') + formatRupiah(Math.abs(profit));
+
+    // Apply profit color
+    profitEl.className = 'finance-card-value finance-profit-value' + (profit < 0 ? ' profit-negative' : '');
+}
+
+// ══════════════════════════════════════════════════
+// ── Low Stock Alert System ────────────────────────
+// ══════════════════════════════════════════════════
+
+const LOW_STOCK_THRESHOLD = 5;
+
+function checkLowStock() {
+    const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
+    const emptyProducts = products.filter(p => p.stock === 0);
+    const alertProducts = [...lowStockProducts, ...emptyProducts];
+
+    const btnAlert = document.getElementById('btnLowStockAlert');
+    const countEl = document.getElementById('lowStockCount');
+
+    if (alertProducts.length > 0) {
+        btnAlert.style.display = 'flex';
+        countEl.textContent = alertProducts.length;
+    } else {
+        btnAlert.style.display = 'none';
+    }
+}
+
+function renderLowStockList() {
+    const lowStockList = document.getElementById('lowStockList');
+    const lowStockEmpty = document.getElementById('lowStockEmpty');
+    if (!lowStockList) return;
+
+    const lowStockProducts = products.filter(p => p.stock <= LOW_STOCK_THRESHOLD)
+        .sort((a, b) => a.stock - b.stock);
+
+    if (lowStockProducts.length === 0) {
+        lowStockList.innerHTML = '';
+        lowStockEmpty.style.display = 'flex';
+        return;
+    }
+
+    lowStockEmpty.style.display = 'none';
+
+    lowStockList.innerHTML = lowStockProducts.map(product => {
+        const isCritical = product.stock <= 2;
+        return `
+            <div class="low-stock-item ${isCritical ? 'stock-critical' : ''}">
+                <div class="low-stock-item-info">
+                    <div class="low-stock-item-emoji">${product.emoji || CATEGORY_EMOJIS[product.category] || '📦'}</div>
+                    <div class="low-stock-item-text">
+                        <span class="low-stock-item-name">${escapeHTML(product.name)}</span>
+                        <span class="low-stock-item-category">${CATEGORY_LABELS[product.category] || product.category}</span>
+                    </div>
+                </div>
+                <div class="low-stock-item-stock">
+                    <span class="stock-number">${product.stock === 0 ? 'HABIS' : product.stock}</span>
+                    <span class="stock-unit-label">${product.unit}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// ── New Event Listeners (for new tabs) ────────────
+// ══════════════════════════════════════════════════
+
+function setupNewTabListeners() {
+    // Low stock alert button
+    const btnLowStockAlert = document.getElementById('btnLowStockAlert');
+    if (btnLowStockAlert) {
+        btnLowStockAlert.addEventListener('click', () => {
+            if (isAdminLoggedIn) {
+                openAdmin();
+                // Switch to stok rendah tab
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+                const tab = document.querySelector('.admin-tab[data-tab="stokRendah"]');
+                if (tab) tab.classList.add('active');
+                const content = document.getElementById('tabStokRendah');
+                if (content) content.classList.add('active');
+                renderLowStockList();
+            } else {
+                openPinModal();
+            }
+        });
+    }
+
+    // Riwayat filter change
+    const riwayatFilter = document.getElementById('riwayatFilterPeriod');
+    if (riwayatFilter) {
+        riwayatFilter.addEventListener('change', renderTransactionHistory);
+    }
+
+    // Finance filter change
+    const financeFilter = document.getElementById('financeFilterPeriod');
+    if (financeFilter) {
+        financeFilter.addEventListener('change', () => {
+            renderFinancialSummary();
+            renderExpenseList();
+        });
+    }
+
+    // Expense form
+    const expenseForm = document.getElementById('expenseForm');
+    if (expenseForm) {
+        expenseForm.addEventListener('submit', addExpense);
+    }
+
+    // Clear all transactions
+    const btnClearRiwayat = document.getElementById('btnClearRiwayat');
+    if (btnClearRiwayat) {
+        btnClearRiwayat.addEventListener('click', clearAllTransactions);
+    }
+
+    // Clear all expenses
+    const btnClearExpenses = document.getElementById('btnClearExpenses');
+    if (btnClearExpenses) {
+        btnClearExpenses.addEventListener('click', clearAllExpenses);
+    }
+
+    // Delegated delete for riwayat list
+    const riwayatList = document.getElementById('riwayatList');
+    if (riwayatList) {
+        riwayatList.addEventListener('click', (e) => {
+            const delBtn = e.target.closest('.riwayat-delete-btn');
+            if (delBtn && delBtn.dataset.txid) {
+                deleteTransaction(parseInt(delBtn.dataset.txid));
+            }
+        });
+    }
+
+    // Delegated delete for expense list
+    const expenseList = document.getElementById('expenseList');
+    if (expenseList) {
+        expenseList.addEventListener('click', (e) => {
+            const delBtn = e.target.closest('.riwayat-delete-btn');
+            if (delBtn && delBtn.dataset.expid) {
+                deleteExpense(parseInt(delBtn.dataset.expid));
+            }
+        });
+    }
 }
 
 // ── App Startup ────────────────────────────────

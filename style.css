@@ -659,9 +659,6 @@ body::before {
     color: var(--rose-400);
     border: 1px solid rgba(251, 113, 133, 0.2);
 }
-    color: var(--rose-400);
-    border: 1px solid rgba(251, 113, 133, 0.2);
-}
 
 .product-name {
     font-size: 1rem;
@@ -875,20 +872,28 @@ body::before {
     border-radius: var(--radius-md);
     padding: 4px;
     margin-bottom: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-tab {
-    flex: 1;
-    padding: 10px 16px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
     background: none;
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-family: var(--font-primary);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-base);
+    white-space: nowrap;
 }
 
 .admin-tab:hover {
@@ -1387,11 +1392,13 @@ body::before {
     text-align: center;
     outline: none;
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .quick-add-form input::-webkit-outer-spin-button,
 .quick-add-form input::-webkit-inner-spin-button {
     -webkit-appearance: none;
+    appearance: none;
     margin: 0;
 }
 
@@ -1511,7 +1518,7 @@ body::before {
 .floating-cart-btn {
     position: fixed;
     bottom: 28px;
-    left: 28px;
+    right: 28px;
     z-index: 500;
     width: 60px;
     height: 60px;
@@ -2331,3 +2338,662 @@ body::before {
     }
 }
 
+/* ============================================
+   Low Stock Alert Button (Header)
+   ============================================ */
+.btn-low-stock-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius-full);
+    color: var(--amber-400);
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+    animation: lowStockPulse 2.5s ease-in-out infinite;
+}
+
+.btn-low-stock-alert:hover {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.25));
+    border-color: rgba(251, 191, 36, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2);
+}
+
+@keyframes lowStockPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.2); }
+    50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+}
+
+.low-stock-count {
+    background: var(--amber-500);
+    color: #000;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    line-height: 1;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Admin Tabs - scrollable for 5 tabs (styles defined above in Admin Modal section) */
+
+/* ============================================
+   Riwayat Transaksi Styles
+   ============================================ */
+.riwayat-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.riwayat-filter-select {
+    padding: 8px 32px 8px 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.riwayat-filter-select:focus {
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.riwayat-filter-select option {
+    background: var(--slate-800);
+    color: var(--text-primary);
+}
+
+.btn-clear-riwayat,
+.btn-clear-expenses {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: rgba(251, 113, 133, 0.08);
+    border: 1px solid rgba(251, 113, 133, 0.15);
+    border-radius: var(--radius-sm);
+    color: var(--rose-400);
+    font-family: var(--font-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-clear-riwayat:hover,
+.btn-clear-expenses:hover {
+    background: rgba(251, 113, 133, 0.15);
+    border-color: rgba(251, 113, 133, 0.3);
+}
+
+.riwayat-list,
+.expense-list,
+.low-stock-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--slate-700) transparent;
+}
+
+.riwayat-list::-webkit-scrollbar,
+.expense-list::-webkit-scrollbar,
+.low-stock-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.riwayat-list::-webkit-scrollbar-thumb,
+.expense-list::-webkit-scrollbar-thumb,
+.low-stock-list::-webkit-scrollbar-thumb {
+    background: var(--slate-700);
+    border-radius: 3px;
+}
+
+/* Transaction Card */
+.riwayat-item {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    transition: all var(--transition-fast);
+    animation: fadeInUp 0.25s ease forwards;
+}
+
+.riwayat-item:hover {
+    border-color: var(--border-hover);
+}
+
+.riwayat-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.riwayat-item-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.riwayat-item-date svg {
+    width: 14px;
+    height: 14px;
+}
+
+.riwayat-item-total {
+    font-size: 1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--emerald-400), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.riwayat-item-products {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+}
+
+.riwayat-product-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.riwayat-product-row .rp-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.riwayat-product-row .rp-qty {
+    color: var(--text-muted);
+    margin: 0 8px;
+    flex-shrink: 0;
+}
+
+.riwayat-product-row .rp-sub {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.riwayat-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.riwayat-item-footer .riwayat-payment-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.riwayat-item-footer .riwayat-payment-info span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.riwayat-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(251, 113, 133, 0.08);
+    border: 1px solid rgba(251, 113, 133, 0.12);
+    border-radius: var(--radius-sm);
+    color: var(--rose-400);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.riwayat-delete-btn:hover {
+    background: rgba(251, 113, 133, 0.18);
+    border-color: rgba(251, 113, 133, 0.3);
+    transform: scale(1.05);
+}
+
+.riwayat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.riwayat-empty p {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 12px;
+}
+
+/* ============================================
+   Financial Dashboard Styles
+   ============================================ */
+.finance-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.finance-card {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all var(--transition-fast);
+}
+
+.finance-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.finance-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.finance-card-income .finance-card-icon {
+    background: rgba(52, 211, 153, 0.12);
+    color: var(--emerald-400);
+}
+
+.finance-card-expense .finance-card-icon {
+    background: rgba(251, 113, 133, 0.12);
+    color: var(--rose-400);
+}
+
+.finance-card-profit .finance-card-icon {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary-400);
+}
+
+.finance-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.finance-card-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.finance-card-value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.finance-income-value {
+    color: var(--emerald-400);
+}
+
+.finance-expense-value {
+    color: var(--rose-400);
+}
+
+.finance-profit-value {
+    background: linear-gradient(135deg, var(--primary-400), #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.finance-profit-value.profit-negative {
+    background: linear-gradient(135deg, var(--rose-400), var(--rose-500));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.finance-period-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.finance-period-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Expense Form */
+.expense-form-section {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.expense-form-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--rose-400);
+    margin-bottom: 14px;
+}
+
+.expense-form-header svg {
+    color: var(--rose-400);
+}
+
+.expense-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.expense-form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+}
+
+.btn-add-expense {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(251, 113, 133, 0.15), rgba(244, 63, 94, 0.15));
+    border: 1px solid rgba(251, 113, 133, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--rose-400);
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.btn-add-expense:hover {
+    background: linear-gradient(135deg, rgba(251, 113, 133, 0.25), rgba(244, 63, 94, 0.25));
+    border-color: rgba(251, 113, 133, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251, 113, 133, 0.2);
+}
+
+.btn-add-expense:active {
+    transform: translateY(0);
+}
+
+/* Expense History */
+.expense-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.expense-history-header span {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Expense Item */
+.expense-item {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--rose-400);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all var(--transition-fast);
+    animation: fadeInUp 0.25s ease forwards;
+}
+
+.expense-item:hover {
+    border-color: var(--border-hover);
+    border-left-color: var(--rose-400);
+}
+
+.expense-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.expense-item-desc {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.expense-item-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.expense-item-amount {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--rose-400);
+    white-space: nowrap;
+}
+
+.expense-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ============================================
+   Low Stock Alert Styles
+   ============================================ */
+.low-stock-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.15);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    font-size: 0.82rem;
+    color: var(--amber-400);
+    font-weight: 500;
+}
+
+.low-stock-item {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--amber-400);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: all var(--transition-fast);
+    animation: fadeInUp 0.25s ease forwards;
+}
+
+.low-stock-item:hover {
+    border-color: var(--border-hover);
+    border-left-color: var(--amber-400);
+}
+
+.low-stock-item.stock-critical {
+    border-left-color: var(--rose-400);
+}
+
+.low-stock-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.low-stock-item-emoji {
+    width: 38px;
+    height: 38px;
+    background: rgba(251, 191, 36, 0.08);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.low-stock-item.stock-critical .low-stock-item-emoji {
+    background: rgba(251, 113, 133, 0.08);
+}
+
+.low-stock-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.low-stock-item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.low-stock-item-category {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.low-stock-item-stock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.low-stock-item-stock .stock-number {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--amber-400);
+}
+
+.low-stock-item.stock-critical .stock-number {
+    color: var(--rose-400);
+}
+
+.low-stock-item-stock .stock-unit-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ============================================
+   Responsive - New Components
+   ============================================ */
+@media (max-width: 768px) {
+    .finance-summary-cards {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .finance-card {
+        padding: 14px;
+    }
+
+    .expense-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .riwayat-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-low-stock-alert span:not(.low-stock-count) {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-tab {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+    }
+
+    .finance-card-value {
+        font-size: 0.9rem;
+    }
+}

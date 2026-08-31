@@ -51,6 +51,14 @@
                     <span>Kasir</span>
                     <span class="header-cart-badge" id="headerCartBadge" style="display:none;">0</span>
                 </button>
+                <button class="btn-low-stock-alert" id="btnLowStockAlert" title="Peringatan Stok Rendah" style="display:none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span class="low-stock-count" id="lowStockCount">0</span>
+                </button>
                 <button class="btn-admin" id="btnAdmin" title="Panel Admin">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -208,6 +216,9 @@
                 <div class="admin-tabs">
                     <button class="admin-tab active" data-tab="edit">Edit Harga & Stok</button>
                     <button class="admin-tab" data-tab="add">Tambah Produk</button>
+                    <button class="admin-tab" data-tab="riwayat">📋 Riwayat</button>
+                    <button class="admin-tab" data-tab="keuangan">💰 Keuangan</button>
+                    <button class="admin-tab" data-tab="stokRendah">⚠️ Stok Rendah</button>
                 </div>
 
                 <!-- Edit Tab -->
@@ -273,6 +284,129 @@
                             Tambah Produk
                         </button>
                     </form>
+                </div>
+
+                <!-- Riwayat Tab -->
+                <div class="admin-tab-content" id="tabRiwayat">
+                    <div class="riwayat-filter-bar">
+                        <select id="riwayatFilterPeriod" class="riwayat-filter-select">
+                            <option value="today">Hari Ini</option>
+                            <option value="week">Minggu Ini</option>
+                            <option value="month" selected>Bulan Ini</option>
+                            <option value="all">Semua</option>
+                        </select>
+                        <button class="btn-clear-riwayat" id="btnClearRiwayat" type="button" title="Hapus Semua Riwayat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Hapus Semua
+                        </button>
+                    </div>
+                    <div class="riwayat-list" id="riwayatList">
+                        <!-- Transaction history items injected here -->
+                    </div>
+                    <div class="riwayat-empty" id="riwayatEmpty" style="display:none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <p>Belum ada riwayat transaksi</p>
+                    </div>
+                </div>
+
+                <!-- Keuangan Tab -->
+                <div class="admin-tab-content" id="tabKeuangan">
+                    <!-- Financial Summary Cards -->
+                    <div class="finance-summary-cards">
+                        <div class="finance-card finance-card-income">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Total Penghasilan</span>
+                                <span class="finance-card-value finance-income-value" id="financeIncome">Rp 0</span>
+                            </div>
+                        </div>
+                        <div class="finance-card finance-card-expense">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Total Pengeluaran</span>
+                                <span class="finance-card-value finance-expense-value" id="financeExpense">Rp 0</span>
+                            </div>
+                        </div>
+                        <div class="finance-card finance-card-profit">
+                            <div class="finance-card-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            </div>
+                            <div class="finance-card-info">
+                                <span class="finance-card-label">Laba Bersih</span>
+                                <span class="finance-card-value finance-profit-value" id="financeProfit">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Period Filter -->
+                    <div class="finance-period-bar">
+                        <span class="finance-period-label">Periode:</span>
+                        <select id="financeFilterPeriod" class="riwayat-filter-select">
+                            <option value="today">Hari Ini</option>
+                            <option value="week">Minggu Ini</option>
+                            <option value="month" selected>Bulan Ini</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
+
+                    <!-- Add Expense Form -->
+                    <div class="expense-form-section">
+                        <div class="expense-form-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            <span>Tambah Pengeluaran</span>
+                        </div>
+                        <form id="expenseForm" class="expense-form">
+                            <div class="expense-form-row">
+                                <div class="form-group">
+                                    <label for="expenseDesc">Keterangan</label>
+                                    <input type="text" id="expenseDesc" placeholder="Contoh: Beli stok beras" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="expenseAmount">Jumlah (Rp)</label>
+                                    <input type="number" id="expenseAmount" placeholder="Contoh: 500000" min="1" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-add-expense">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Simpan Pengeluaran
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Expense History -->
+                    <div class="expense-history-header">
+                        <span>Riwayat Pengeluaran</span>
+                        <button class="btn-clear-expenses" id="btnClearExpenses" type="button" title="Hapus Semua Pengeluaran">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Hapus Semua
+                        </button>
+                    </div>
+                    <div class="expense-list" id="expenseList">
+                        <!-- Expense items injected here -->
+                    </div>
+                    <div class="riwayat-empty" id="expenseEmpty" style="display:none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <p>Belum ada pengeluaran tercatat</p>
+                    </div>
+                </div>
+
+                <!-- Stok Rendah Tab -->
+                <div class="admin-tab-content" id="tabStokRendah">
+                    <div class="low-stock-info-bar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>Produk dengan stok ≤ 5 unit akan muncul di sini</span>
+                    </div>
+                    <div class="low-stock-list" id="lowStockList">
+                        <!-- Low stock items injected here -->
+                    </div>
+                    <div class="riwayat-empty" id="lowStockEmpty" style="display:none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <p>Semua stok aman! 🎉</p>
+                    </div>
                 </div>
             </div>
         </div>
